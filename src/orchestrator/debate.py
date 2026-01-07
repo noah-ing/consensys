@@ -9,9 +9,9 @@ from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.text import Text
 
-from src.agents.agent import Agent, ReviewResult
+from src.agents.agent import Agent, ReviewResult, ResponseResult
 from src.agents.personas import PERSONAS, Persona
-from src.models.review import Review
+from src.models.review import Review, Response
 from src.db.storage import Storage
 
 
@@ -45,6 +45,7 @@ class DebateOrchestrator:
         self.code: Optional[str] = None
         self.context: Optional[str] = None
         self.reviews: List[Review] = []
+        self.responses: List[Response] = []
 
     def _agent_review_task(
         self,
@@ -260,6 +261,244 @@ class DebateOrchestrator:
         self.console.print()
         self.console.print(table)
         self.console.print()
+
+    def _agent_response_task(
+        self,
+        agent: Agent,
+        review: ReviewResult,
+        code: str
+    ) -> ResponseResult:
+        """Execute a single agent's response to another review.
+
+        Args:
+            agent: The agent providing the response
+            review: The review to respond to
+            code: The original code being reviewed
+
+        Returns:
+            ResponseResult from the agent
+        """
+        return agent.respond_to(review, code)
+
+    def _display_response(self, response: Response) -> None:
+        """Display a response in a formatted panel.
+
+        Args:
+            response: The response to display
+        """
+        agreement_colors = {
+            "AGREE": "green",
+            "PARTIAL": "yellow",
+            "DISAGREE": "red",
+        }
+        color = agreement_colors.get(response.agreement_level, "blue")
+
+        content_lines = []
+
+        # Header showing who is responding to whom
+        content_lines.append(
+            f"[bold]{response.agent_name}[/bold] responds to [bold]{response.responding_to}[/bold]"
+        )
+        content_lines.append(
+            f"[bold]Agreement:[/bold] [{color}]{response.agreement_level}[/{color}]"
+        )
+
+        # Points made
+        if response.points:
+            content_lines.append(f"\n[bold]Points:[/bold]")
+            for point in response.points:
+                content_lines.append(f"  [cyan]\u2022[/cyan] {point}")
+
+        # Summary
+        if response.summary:
+            content_lines.append(f"\n[bold]Summary:[/bold]\n{response.summary}")
+
+        content = "\n".join(content_lines)
+
+        # Create and display panel
+        panel = Panel(
+            content,
+            title=f"[bold]{response.agent_name} \u2192 {response.responding_to}[/bold]",
+            border_style=color,
+            padding=(1, 2),
+        )
+        self.console.print(panel)
+        self.console.print()
+
+    def _display_response_summary(self) -> None:
+        """Display a summary table of all responses and debate flow."""
+        # Create debate flow visualization
+        self.console.print()
+        self.console.rule("[bold cyan]Debate Flow[/bold cyan]")
+        self.console.print()
+
+        agreement_colors = {
+            "AGREE": "green",
+            "PARTIAL": "yellow",
+            "DISAGREE": "red",
+        }
+
+        # Group responses by responder
+        responses_by_agent: Dict[str, List[Response]] = {}
+        for response in self.responses:
+            if response.agent_name not in responses_by_agent:
+                responses_by_agent[response.agent_name] = []
+            responses_by_agent[response.agent_name].append(response)
+
+        # Display flow for each agent
+        for agent_name, agent_responses in responses_by_agent.items():
+            flow_parts = []
+            for resp in agent_responses:
+                color = agreement_colors.get(resp.agreement_level, "blue")
+                flow_parts.append(f"[{color}]{resp.responding_to}[/{color}]")
+            flow_str = ", ".join(flow_parts)
+            self.console.print(f"[bold cyan]{agent_name}[/bold cyan] responded to: {flow_str}")
+
+        # Summary table
+        self.console.print()
+        table = Table(title="Response Summary", show_header=True, header_style="bold")
+        table.add_column("Responder", style="cyan")
+        table.add_column("Responding To", style="blue")
+        table.add_column("Agreement", justify="center")
+        table.add_column("Points", justify="center")
+
+        for response in self.responses:
+            color = agreement_colors.get(response.agreement_level, "blue")
+            table.add_row(
+                response.agent_name,
+                response.responding_to,
+                f"[{color}]{response.agreement_level}[/{color}]",
+                str(len(response.points)),
+            )
+
+        self.console.print(table)
+        self.console.print()
+
+    def run_responses(self) -> List[Response]:
+        """Run Round 2: Response round where agents respond to each other.
+
+        Each agent reviews all other agents' reviews and provides responses.
+        Responses are collected in parallel and stored.
+
+        Returns:
+            List of Response objects from all agents
+
+        Raises:
+            ValueError: If no reviews exist (start_review not called)
+        """
+        if not self.reviews:
+            raise ValueError(
+                "No reviews to respond to. Call start_review() first."
+            )
+
+        if not self.session_id or not self.code:
+            raise ValueError("No active session. Call start_review() first.")
+
+        self.responses = []
+
+        self.console.print()
+        self.console.rule("[bold blue]Round 2: Debate Responses[/bold blue]")
+        self.console.print()
+
+        # Convert Review models to ReviewResult for agent.respond_to()
+        review_results: Dict[str, ReviewResult] = {}
+        for review in self.reviews:
+            review_results[review.agent_name] = ReviewResult(
+                agent_name=review.agent_name,
+                issues=review.issues,
+                suggestions=review.suggestions,
+                severity=review.severity,
+                confidence=review.confidence,
+                summary=review.summary,
+            )
+
+        # Track all response tasks: (agent, target_review)
+        response_tasks = []
+        for agent in self.agents:
+            for other_agent_name, review_result in review_results.items():
+                # Skip self-responses
+                if agent.persona.name != other_agent_name:
+                    response_tasks.append((agent, review_result))
+
+        # Track completed responses for ordered display
+        completed_responses: List[ResponseResult] = []
+
+        # Run all response tasks in parallel with progress display
+        with Progress(
+            SpinnerColumn(),
+            TextColumn("[progress.description]{task.description}"),
+            console=self.console,
+            transient=True,
+        ) as progress:
+            # Create a single progress task for overall progress
+            overall_task = progress.add_task(
+                f"[cyan]Agents debating ({len(response_tasks)} responses)...[/cyan]",
+                total=len(response_tasks)
+            )
+
+            # Submit all responses to thread pool
+            with ThreadPoolExecutor(max_workers=len(self.agents)) as executor:
+                future_to_task = {
+                    executor.submit(
+                        self._agent_response_task,
+                        agent,
+                        review_result,
+                        self.code
+                    ): (agent, review_result)
+                    for agent, review_result in response_tasks
+                }
+
+                # Collect results as they complete
+                for future in as_completed(future_to_task):
+                    agent, review_result = future_to_task[future]
+
+                    try:
+                        result = future.result()
+                        completed_responses.append(result)
+                        progress.advance(overall_task)
+
+                    except Exception as e:
+                        self.console.print(
+                            f"[red]Error from {agent.persona.name} responding to "
+                            f"{review_result.agent_name}: {e}[/red]"
+                        )
+                        progress.advance(overall_task)
+
+        # Sort responses by agent name for consistent display
+        completed_responses.sort(key=lambda r: (r.agent_name, r.responding_to))
+
+        # Convert to Response models, display, and store
+        for result in completed_responses:
+            response = Response(
+                agent_name=result.agent_name,
+                responding_to=result.responding_to,
+                agreement_level=result.agreement_level,
+                points=result.points,
+                summary=result.summary,
+                session_id=self.session_id,
+            )
+
+            # Display the response
+            self._display_response(response)
+
+            # Store in database
+            self.storage.save_response(response, self.session_id)
+
+            # Keep track for later rounds
+            self.responses.append(response)
+
+        # Display summary
+        self._display_response_summary()
+
+        return self.responses
+
+    def get_responses(self) -> List[Response]:
+        """Get the responses from the current session.
+
+        Returns:
+            List of Response objects from the current session
+        """
+        return self.responses
 
     def get_session_id(self) -> Optional[str]:
         """Get the current session ID.
