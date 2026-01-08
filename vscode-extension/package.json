@@ -1,0 +1,89 @@
+{
+  "name": "consensus-code-review",
+  "displayName": "Consensus Code Review",
+  "description": "Multi-agent AI code review with debate-style consensus building",
+  "version": "0.1.0",
+  "publisher": "consensus",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Linters",
+    "Other"
+  ],
+  "keywords": [
+    "code review",
+    "ai",
+    "claude",
+    "multi-agent",
+    "consensus"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/consensus/consensus"
+  },
+  "activationEvents": [
+    "onCommand:consensus.reviewFile",
+    "onCommand:consensus.reviewSelection"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "consensus.reviewFile",
+        "title": "Consensus: Review Current File"
+      },
+      {
+        "command": "consensus.reviewSelection",
+        "title": "Consensus: Review Selection"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "consensus.reviewSelection",
+          "when": "editorHasSelection",
+          "group": "consensus"
+        },
+        {
+          "command": "consensus.reviewFile",
+          "group": "consensus"
+        }
+      ]
+    },
+    "keybindings": [
+      {
+        "command": "consensus.reviewFile",
+        "key": "ctrl+shift+r",
+        "mac": "cmd+shift+r",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "consensus.reviewSelection",
+        "key": "ctrl+shift+alt+r",
+        "mac": "cmd+shift+alt+r",
+        "when": "editorTextFocus && editorHasSelection"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.0",
+    "@vscode/vsce": "^2.22.0"
+  },
+  "dependencies": {
+    "axios": "^1.6.0"
+  }
+}
