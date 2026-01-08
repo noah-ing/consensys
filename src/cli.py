@@ -68,7 +68,8 @@ def cli():
 @click.option("--output", "-o", type=click.Path(), help="Write fixed code to file (with --fix)")
 @click.option("--stream", "-s", is_flag=True, help="Stream agent thinking in real-time")
 @click.option("--debate", "-d", is_flag=True, help="Use confrontational debate mode (agents argue more)")
-def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool):
+@click.option("--quick", "-q", is_flag=True, help="Quick mode: Round 1 only (no debate/voting), fast for hooks")
+def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool):
     """Run a full debate review on code.
 
     Review a file:
@@ -83,6 +84,9 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
     Auto-fix code based on review:
         consensus review file.py --fix
         consensus review file.py --fix --output fixed.py
+
+    Quick mode (for git hooks):
+        consensus review file.py --quick
     """
     # Get code from file or --code option
     if file:
@@ -215,8 +219,15 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
             orchestrator.session_id = session_id
             orchestrator.reviews = all_reviews
 
+        elif quick:
+            # Quick mode: Round 1 only, no debate/voting (fast for hooks)
+            console.print("[bold cyan]⚡ Quick Mode: Running Round 1 only[/bold cyan]")
+            console.print()
+            orchestrator = DebateOrchestrator(personas=team_personas)
+            consensus_result = orchestrator.run_quick_review(code_content, context)
+
         else:
-            # Standard parallel mode
+            # Standard parallel mode (full debate)
             orchestrator = DebateOrchestrator(personas=team_personas)
             consensus_result = orchestrator.run_full_debate(code_content, context)
 

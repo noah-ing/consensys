@@ -901,6 +901,114 @@ class DebateOrchestrator:
         self.console.print(panel)
         self.console.print()
 
+    def run_quick_review(
+        self,
+        code: str,
+        context: Optional[str] = None
+    ) -> Consensus:
+        """Run a quick review: only Round 1 reviews, no debate or voting.
+
+        This is optimized for speed, suitable for git hooks and pre-commit checks.
+        Skips the response/rebuttal and voting rounds.
+
+        Args:
+            code: The code to review
+            context: Optional context about the code
+
+        Returns:
+            Consensus object with aggregated insights (no voting)
+        """
+        # Only Round 1: Initial reviews
+        self.start_review(code, context)
+
+        # Build quick consensus from reviews (no voting)
+        return self._build_quick_consensus()
+
+    def _build_quick_consensus(self) -> Consensus:
+        """Build consensus from reviews only (no voting).
+
+        Creates a lightweight consensus based on review severities
+        without running the full voting round.
+
+        Returns:
+            Consensus object with decision based on review severities
+        """
+        if not self.reviews:
+            raise ValueError(
+                "No reviews to build consensus from. Call start_review() first."
+            )
+
+        if not self.session_id or not self.code:
+            raise ValueError("No active session. Call start_review() first.")
+
+        self.console.print()
+        self.console.rule("[bold blue]Quick Consensus[/bold blue]")
+        self.console.print()
+
+        # Determine decision based on review severities
+        # CRITICAL or HIGH severity = REJECT, otherwise APPROVE
+        has_critical = any(r.severity == "CRITICAL" for r in self.reviews)
+        has_high = any(r.severity == "HIGH" for r in self.reviews)
+
+        if has_critical:
+            final_decision = VoteDecision.REJECT
+        elif has_high:
+            # HIGH severity gets a softer approach - abstain to flag for manual review
+            final_decision = VoteDecision.ABSTAIN
+        else:
+            final_decision = VoteDecision.APPROVE
+
+        # Simulate vote counts based on severity
+        approve_count = sum(1 for r in self.reviews if r.severity in ("LOW", "MEDIUM"))
+        reject_count = sum(1 for r in self.reviews if r.severity == "CRITICAL")
+        abstain_count = sum(1 for r in self.reviews if r.severity == "HIGH")
+
+        vote_counts = {
+            "APPROVE": approve_count,
+            "REJECT": reject_count,
+            "ABSTAIN": abstain_count,
+        }
+
+        # Aggregate all issues
+        all_issues: List[Dict[str, Any]] = []
+        for review in self.reviews:
+            for issue in review.issues:
+                desc = issue.get("description", str(issue))
+                if desc not in [i.get("description", "") for i in all_issues]:
+                    all_issues.append(issue)
+
+        # Key issues are HIGH/CRITICAL severity
+        key_issues = [
+            issue for issue in all_issues
+            if issue.get("severity", "LOW") in ("CRITICAL", "HIGH")
+        ]
+
+        # Aggregate all suggestions
+        all_suggestions: List[str] = []
+        for review in self.reviews:
+            for suggestion in review.suggestions:
+                if suggestion not in all_suggestions:
+                    all_suggestions.append(suggestion)
+
+        # Create consensus
+        self.consensus = Consensus(
+            final_decision=final_decision,
+            vote_counts=vote_counts,
+            key_issues=key_issues,
+            accepted_suggestions=all_suggestions[:5],  # Limit to top 5
+            session_id=self.session_id,
+            code_snippet=self.code,
+            context=self.context,
+        )
+
+        # Save to database
+        self.storage.save_consensus(self.consensus)
+
+        # Display consensus
+        self._display_consensus()
+
+        return self.consensus
+
     def run_full_debate(
         self,
         code: str,
