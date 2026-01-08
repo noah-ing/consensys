@@ -652,6 +652,51 @@ def example_function():
                 </div>
             </div>
 
+            <!-- Apply All Fixes Panel -->
+            <div id="apply-fixes-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center">
+                        <svg class="w-6 h-6 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                        </svg>
+                        Apply All Fixes
+                    </h2>
+                    <div class="flex items-center gap-3">
+                        <span id="applied-fixes-count" class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"></span>
+                        <button onclick="copyAllFixedCode()" id="copy-all-fixes-btn" class="flex items-center px-4 py-2 text-sm font-medium rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/25 transition-all">
+                            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                            </svg>
+                            Copy Fixed Code
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                    Below is your code with all suggested fixes applied. Review the changes and copy when ready.
+                </p>
+
+                <!-- Fixed Code Display -->
+                <div class="relative">
+                    <div class="absolute top-3 left-3 flex items-center gap-2 z-10">
+                        <span class="px-2 py-1 rounded-md text-xs font-medium bg-slate-700/80 text-slate-300">Fixed Version</span>
+                    </div>
+                    <pre class="!mt-0 rounded-xl overflow-hidden"><code id="all-fixed-code" class="language-python"></code></pre>
+                </div>
+
+                <!-- Fixes Applied List -->
+                <div id="fixes-applied-list" class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center">
+                        <svg class="w-4 h-4 mr-1.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        Fixes Applied
+                    </h3>
+                    <ul id="fixes-applied-items" class="space-y-1 text-sm text-slate-600 dark:text-slate-400"></ul>
+                </div>
+            </div>
+
             <!-- Agent Reviews -->
             <div>
                 <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
@@ -1020,6 +1065,10 @@ def example_function():
                 document.getElementById(`fixes-${severity}`).classList.add('hidden');
                 document.getElementById(`fixes-${severity}-content`).innerHTML = '';
             });
+            // Reset apply all fixes panel
+            document.getElementById('apply-fixes-panel').classList.add('hidden');
+            document.getElementById('all-fixed-code').textContent = '';
+            document.getElementById('fixes-applied-items').innerHTML = '';
         }
 
         function showAgentStatus() {
@@ -1060,6 +1109,10 @@ def example_function():
 
             // Extract and display fixes from reviews
             displaySuggestedFixes(data.reviews || [], languageSelect.value);
+
+            // Apply all fixes section - use the original code from data or from the input
+            const originalCode = data.code || codeInput.value;
+            displayApplyAllFixes(originalCode, data.reviews || [], languageSelect.value);
 
             // Responses
             if (data.responses?.length) {
@@ -1532,6 +1585,132 @@ def example_function():
                 'java': 'java'
             };
             return mapping[lang] || 'python';
+        }
+
+        // ===================
+        // Apply All Fixes Functions
+        // ===================
+
+        // Global state for the combined fixed code
+        let allFixedCodeText = '';
+
+        function displayApplyAllFixes(originalCode, reviews, language) {
+            const panel = document.getElementById('apply-fixes-panel');
+            const codeEl = document.getElementById('all-fixed-code');
+            const countBadge = document.getElementById('applied-fixes-count');
+            const fixesList = document.getElementById('fixes-applied-items');
+
+            // Collect all fixes with their original code
+            const fixes = [];
+            reviews.forEach(review => {
+                if (!review.issues) return;
+                review.issues.forEach(issue => {
+                    const issueObj = typeof issue === 'string' ? { description: issue } : issue;
+                    if (issueObj.fix && issueObj.original_code) {
+                        fixes.push({
+                            description: issueObj.description,
+                            original: issueObj.original_code,
+                            fixed: issueObj.fix,
+                            line: issueObj.line,
+                            severity: issueObj.severity || 'LOW',
+                            agent: review.agent_name
+                        });
+                    }
+                });
+            });
+
+            if (fixes.length === 0) {
+                panel.classList.add('hidden');
+                return;
+            }
+
+            // Apply all non-conflicting fixes to the original code
+            const { fixedCode, appliedFixes } = applyAllFixes(originalCode, fixes);
+
+            if (appliedFixes.length === 0) {
+                panel.classList.add('hidden');
+                return;
+            }
+
+            // Store for copy function
+            allFixedCodeText = fixedCode;
+
+            // Show panel
+            panel.classList.remove('hidden');
+
+            // Update count badge
+            countBadge.textContent = `${appliedFixes.length} fix${appliedFixes.length !== 1 ? 'es' : ''} applied`;
+
+            // Update code display
+            const prismLang = getPrismLanguage(language);
+            codeEl.className = `language-${prismLang}`;
+            codeEl.textContent = fixedCode;
+            Prism.highlightElement(codeEl);
+
+            // Update fixes list
+            fixesList.innerHTML = appliedFixes.map(fix => `
+                <li class="flex items-start pl-2 border-l-2 ${getBorderColorForSeverity(fix.severity)}">
+                    <span>${escapeHtml(fix.description)}</span>
+                    ${fix.line ? `<span class="ml-1 text-xs text-slate-400">(L${fix.line})</span>` : ''}
+                </li>
+            `).join('');
+        }
+
+        function applyAllFixes(originalCode, fixes) {
+            // Sort fixes by line number (descending) to apply from bottom to top
+            // This prevents line number shifts from affecting subsequent fixes
+            const sortedFixes = [...fixes].sort((a, b) => {
+                const lineA = a.line || 0;
+                const lineB = b.line || 0;
+                return lineB - lineA;
+            });
+
+            let currentCode = originalCode;
+            const appliedFixes = [];
+            const appliedOriginals = new Set(); // Track already applied fixes to avoid conflicts
+
+            for (const fix of sortedFixes) {
+                // Skip if we already applied a fix for this original code
+                const originalNormalized = fix.original.trim();
+                if (appliedOriginals.has(originalNormalized)) {
+                    continue;
+                }
+
+                // Try to find and replace the original code
+                if (currentCode.includes(fix.original)) {
+                    currentCode = currentCode.replace(fix.original, fix.fixed);
+                    appliedFixes.push(fix);
+                    appliedOriginals.add(originalNormalized);
+                } else if (currentCode.includes(fix.original.trim())) {
+                    // Try with trimmed version
+                    currentCode = currentCode.replace(fix.original.trim(), fix.fixed.trim());
+                    appliedFixes.push(fix);
+                    appliedOriginals.add(originalNormalized);
+                }
+            }
+
+            return { fixedCode: currentCode, appliedFixes };
+        }
+
+        function copyAllFixedCode() {
+            const btn = document.getElementById('copy-all-fixes-btn');
+
+            navigator.clipboard.writeText(allFixedCodeText).then(() => {
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Copied!
+                `;
+                btn.classList.add('from-green-600', 'to-emerald-700');
+                setTimeout(() => {
+                    btn.innerHTML = originalHTML;
+                    btn.classList.remove('from-green-600', 'to-emerald-700');
+                }, 2000);
+            }).catch(() => {
+                showToast('Failed to copy to clipboard', 'error');
+            });
         }
 
         // ===================
