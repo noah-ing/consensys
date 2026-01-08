@@ -1,0 +1,35 @@
+# Pre-commit hooks for Consensus AI code review
+# See https://pre-commit.com for more information
+
+- id: consensus-review
+  name: Consensus AI Code Review
+  description: Multi-agent AI code review with debate and voting
+  entry: consensus review --quick
+  language: python
+  types: [python]
+  pass_filenames: true
+  require_serial: false
+  verbose: true
+  stages: [commit]
+
+- id: consensus-review-strict
+  name: Consensus AI Code Review (Strict)
+  description: Multi-agent AI code review - fails on HIGH severity or above
+  entry: consensus review --quick --fail-on HIGH
+  language: python
+  types: [python]
+  pass_filenames: true
+  require_serial: false
+  verbose: true
+  stages: [commit]
+
+- id: consensus-review-all
+  name: Consensus AI Code Review (All Languages)
+  description: Multi-agent AI code review for any file type
+  entry: consensus review --quick
+  language: python
+  types_or: [python, javascript, typescript, go, rust, java, c, c++, ruby, php]
+  pass_filenames: true
+  require_serial: false
+  verbose: true
+  stages: [commit]

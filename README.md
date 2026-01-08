@@ -308,6 +308,10 @@ consensus teams
 
 ## Pre-commit Hook
 
+Integrate Consensus with the [pre-commit](https://pre-commit.com) framework for automatic code review on every commit.
+
+### Basic Setup
+
 Add to `.pre-commit-config.yaml`:
 
 ```yaml
@@ -316,14 +320,105 @@ repos:
     rev: v0.1.0
     hooks:
       - id: consensus-review
-        args: ['--quick', '--fail-on', 'HIGH']
 ```
 
-Or install the built-in hook:
+### Available Hooks
+
+| Hook ID | Description | Default Behavior |
+|---------|-------------|------------------|
+| `consensus-review` | Quick AI code review | Python files, warn on issues |
+| `consensus-review-strict` | Strict mode | Fails on HIGH severity or above |
+| `consensus-review-all` | Multi-language | Python, JS, TS, Go, Rust, Java, etc. |
+
+### Configuration Examples
+
+**Quick review (default):**
+```yaml
+repos:
+  - repo: https://github.com/consensus-review/consensus
+    rev: v0.1.0
+    hooks:
+      - id: consensus-review
+```
+
+**Strict mode - fail on HIGH severity:**
+```yaml
+repos:
+  - repo: https://github.com/consensus-review/consensus
+    rev: v0.1.0
+    hooks:
+      - id: consensus-review-strict
+```
+
+**Custom severity threshold:**
+```yaml
+repos:
+  - repo: https://github.com/consensus-review/consensus
+    rev: v0.1.0
+    hooks:
+      - id: consensus-review
+        args: ['--fail-on', 'CRITICAL']
+```
+
+**Only specific files:**
+```yaml
+repos:
+  - repo: https://github.com/consensus-review/consensus
+    rev: v0.1.0
+    hooks:
+      - id: consensus-review
+        files: ^src/
+```
+
+**Multiple languages:**
+```yaml
+repos:
+  - repo: https://github.com/consensus-review/consensus
+    rev: v0.1.0
+    hooks:
+      - id: consensus-review-all
+        args: ['--fail-on', 'HIGH']
+```
+
+### Running Manually
 
 ```bash
-consensus install-hooks --git
+# Install pre-commit
+pip install pre-commit
+
+# Install hooks
+pre-commit install
+
+# Run on all files
+pre-commit run --all-files
+
+# Run on staged files
+pre-commit run consensus-review
+
+# Test from repo
+pre-commit try-repo . consensus-review --files myfile.py
 ```
+
+### Hook Arguments
+
+The hooks accept any arguments supported by `consensus review`:
+
+| Argument | Description |
+|----------|-------------|
+| `--fail-on SEVERITY` | Exit 1 if issues at SEVERITY or above (LOW, MEDIUM, HIGH, CRITICAL) |
+| `--min-severity SEVERITY` | Only show issues at SEVERITY or above |
+| `--no-cache` | Force fresh review, bypass cache |
+
+### Environment Setup
+
+Ensure your `ANTHROPIC_API_KEY` is set:
+
+```bash
+# In your shell profile (.bashrc, .zshrc, etc.)
+export ANTHROPIC_API_KEY="your-api-key"
+```
+
+For CI environments, add the key to your secrets manager.
 
 ## API Usage
 
