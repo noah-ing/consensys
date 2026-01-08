@@ -1,4 +1,4 @@
-"""Team presets and configuration for Consensus.
+"""Team presets and configuration for Consensys.
 
 Teams are predefined sets of personas that work well together for
 specific review purposes. Users can also set a custom team.
@@ -32,7 +32,7 @@ TEAM_PRESETS: Dict[str, Dict[str, Any]] = {
 
 
 def get_config_dir() -> Path:
-    """Get the Consensus configuration directory.
+    """Get the Consensys configuration directory.
 
     Returns:
         Path to the configuration directory

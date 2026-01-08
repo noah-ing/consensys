@@ -1,4 +1,4 @@
-"""Custom persona management for Consensus."""
+"""Custom persona management for Consensys."""
 from src.personas.custom import (
     load_custom_personas,
     save_custom_persona,

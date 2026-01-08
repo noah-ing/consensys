@@ -1,1 +1,1 @@
-"""Git integration for Consensus."""
+"""Git integration for Consensys."""

@@ -1,4 +1,4 @@
-# Consensus - Multi-agent Code Review
+# Consensys - Multi-agent Code Review
 # Docker Compose configuration for easy local deployment
 #
 # Usage:
@@ -11,12 +11,12 @@
 version: "3.8"
 
 services:
-  consensus:
+  consensys:
     build:
       context: .
       dockerfile: Dockerfile
-    image: consensus:latest
-    container_name: consensus-web
+    image: consensys:latest
+    container_name: consensys-web
     ports:
       - "8000:8000"
     environment:
@@ -26,7 +26,7 @@ services:
       - CONSENSUS_DATA_DIR=/app/data
     volumes:
       # Persist review history and cache
-      - consensus-data:/app/data
+      - consensys-data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
@@ -36,5 +36,5 @@ services:
       start_period: 10s
 
 volumes:
-  consensus-data:
+  consensys-data:
     driver: local

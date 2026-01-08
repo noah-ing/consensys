@@ -7,9 +7,9 @@ from typing import Dict, Optional, List
 # Claude Code hooks directory
 CLAUDE_CODE_HOOKS_DIR = Path.home() / ".claude" / "hooks"
 
-# Pre-commit hook that runs consensus review
+# Pre-commit hook that runs consensys review
 PRE_COMMIT_HOOK = '''#!/bin/bash
-# Consensus Review - Pre-commit Hook
+# Consensys Review - Pre-commit Hook
 # Runs multi-agent code review on staged changes
 
 set -e
@@ -18,11 +18,11 @@ set -e
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACM | grep -E '\.py$' || true)
 
 if [ -z "$STAGED_FILES" ]; then
-    echo "No Python files staged, skipping consensus review"
+    echo "No Python files staged, skipping consensys review"
     exit 0
 fi
 
-echo "🔍 Running Consensus review on staged changes..."
+echo "🔍 Running Consensys review on staged changes..."
 echo ""
 
 # Run consensus on staged changes
@@ -31,17 +31,17 @@ python -m src.cli commit --quick
 # Check the exit code
 if [ $? -ne 0 ]; then
     echo ""
-    echo "❌ Consensus review found issues. Fix them or commit with --no-verify"
+    echo "❌ Consensys review found issues. Fix them or commit with --no-verify"
     exit 1
 fi
 
 echo ""
-echo "✅ Consensus review passed"
+echo "✅ Consensys review passed"
 '''
 
 # Claude Code hook that triggers on tool calls
 CLAUDE_CODE_HOOK = '''#!/bin/bash
-# Consensus Review - Claude Code Hook
+# Consensys Review - Claude Code Hook
 # Auto-reviews code written by Claude
 
 EVENT_TYPE="$1"
@@ -58,7 +58,7 @@ if [[ ! "$FILE_PATH" =~ \.py$ ]]; then
 fi
 
 # Quick review (no debate, just round 1)
-echo "🔍 Quick consensus review of $FILE_PATH..."
+echo "🔍 Quick consensys review of $FILE_PATH..."
 python -m src.cli review "$FILE_PATH" --quick 2>/dev/null || true
 '''
 
@@ -73,7 +73,7 @@ def install_hooks(
     claude_code_hooks: bool = True,
     repo_path: Optional[Path] = None
 ) -> Dict[str, bool]:
-    """Install consensus hooks.
+    """Install consensys hooks.
 
     Args:
         git_hooks: Install git pre-commit hook
@@ -99,7 +99,7 @@ def uninstall_hooks(
     claude_code_hooks: bool = True,
     repo_path: Optional[Path] = None
 ) -> Dict[str, bool]:
-    """Uninstall consensus hooks.
+    """Uninstall consensys hooks.
 
     Args:
         git_hooks: Uninstall git pre-commit hook
@@ -136,7 +136,7 @@ def get_hook_status() -> Dict[str, Dict]:
     }
 
     # Check Claude Code hook
-    claude_hook_path = CLAUDE_CODE_HOOKS_DIR / "consensus-review.sh"
+    claude_hook_path = CLAUDE_CODE_HOOKS_DIR / "consensys-review.sh"
     status["claude_code"] = {
         "installed": claude_hook_path.exists(),
         "path": str(claude_hook_path)
@@ -214,7 +214,7 @@ def _install_claude_code_hook() -> bool:
     try:
         CLAUDE_CODE_HOOKS_DIR.mkdir(parents=True, exist_ok=True)
 
-        hook_path = CLAUDE_CODE_HOOKS_DIR / "consensus-review.sh"
+        hook_path = CLAUDE_CODE_HOOKS_DIR / "consensys-review.sh"
         hook_path.write_text(CLAUDE_CODE_HOOK)
 
         # Make executable
@@ -223,12 +223,12 @@ def _install_claude_code_hook() -> bool:
         # Also create a config entry
         config_path = CLAUDE_CODE_HOOKS_DIR / "consensus-config.json"
         config_path.write_text('''{
-    "name": "consensus-review",
+    "name": "consensys-review",
     "description": "Multi-agent AI code review",
     "trigger": "post_tool",
     "tools": ["Write", "Edit"],
     "file_patterns": ["*.py"],
-    "script": "consensus-review.sh"
+    "script": "consensys-review.sh"
 }''')
 
         return True
@@ -239,7 +239,7 @@ def _install_claude_code_hook() -> bool:
 def _uninstall_claude_code_hook() -> bool:
     """Uninstall Claude Code hook."""
     try:
-        hook_path = CLAUDE_CODE_HOOKS_DIR / "consensus-review.sh"
+        hook_path = CLAUDE_CODE_HOOKS_DIR / "consensys-review.sh"
         config_path = CLAUDE_CODE_HOOKS_DIR / "consensus-config.json"
 
         if hook_path.exists():

@@ -1,4 +1,4 @@
-"""Expert persona definitions for the Consensus code review system."""
+"""Expert persona definitions for the Consensys code review system."""
 from dataclasses import dataclass, field
 from typing import List
 

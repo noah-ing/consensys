@@ -1,4 +1,4 @@
-"""FastAPI web application for Consensus code review."""
+"""FastAPI web application for Consensys code review."""
 import asyncio
 import json
 from pathlib import Path
@@ -18,7 +18,7 @@ from src.languages import detect_language
 
 # FastAPI app
 app = FastAPI(
-    title="Consensus",
+    title="Consensys",
     description="Multi-agent AI code review with debate and voting",
     version="0.1.0",
 )
@@ -504,7 +504,7 @@ async def root():
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Consensus - AI Code Review</title>
+    <title>Consensys - AI Code Review</title>
     <style>
         body { font-family: system-ui; max-width: 800px; margin: 0 auto; padding: 20px; }
         h1 { color: #333; }
@@ -513,7 +513,7 @@ async def root():
     </style>
 </head>
 <body>
-    <h1>Consensus - Multi-Agent Code Review</h1>
+    <h1>Consensys - Multi-Agent Code Review</h1>
     <div class="api-doc">
         <h2>API Endpoints</h2>
         <ul>

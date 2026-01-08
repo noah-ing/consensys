@@ -1,4 +1,4 @@
-"""CLI interface for Consensus multi-agent code review."""
+"""CLI interface for Consensys multi-agent code review."""
 import sys
 from pathlib import Path
 from typing import Optional
@@ -112,9 +112,9 @@ def check_fail_threshold(reviews: list, consensus, fail_on: str) -> bool:
 
 
 @click.group()
-@click.version_option(version=__version__, prog_name="consensus")
+@click.version_option(version=__version__, prog_name="consensys")
 def cli():
-    """Consensus - Multi-agent AI code review with debate and voting.
+    """Consensys - Multi-agent AI code review with debate and voting.
 
     Run code reviews with multiple AI experts who discuss, debate, and
     vote on code quality. Each expert has a unique perspective:
@@ -147,33 +147,33 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
     """Run a full debate review on code.
 
     Review a file:
-        consensus review path/to/file.py
+        consensys review path/to/file.py
 
     Review inline code:
-        consensus review --code 'def foo(): pass'
+        consensys review --code 'def foo(): pass'
 
     Add context:
-        consensus review file.py --context 'This is a critical auth function'
+        consensys review file.py --context 'This is a critical auth function'
 
     Auto-fix code based on review:
-        consensus review file.py --fix
-        consensus review file.py --fix --output fixed.py
+        consensys review file.py --fix
+        consensys review file.py --fix --output fixed.py
 
     Quick mode (for git hooks):
-        consensus review file.py --quick
+        consensys review file.py --quick
 
     Force fresh review (skip cache):
-        consensus review file.py --no-cache
+        consensys review file.py --no-cache
 
     Filter issues by severity:
-        consensus review file.py --min-severity HIGH
+        consensys review file.py --min-severity HIGH
 
     CI mode (exit 1 if issues found):
-        consensus review file.py --fail-on CRITICAL
-        consensus review file.py --fail-on HIGH
+        consensys review file.py --fail-on CRITICAL
+        consensys review file.py --fail-on HIGH
 
     Review only changed lines (smart diff mode):
-        consensus review file.py --diff-only
+        consensys review file.py --diff-only
     """
     # Get code from file or --code option
     diff_context_info: Optional[DiffContext] = None
@@ -232,7 +232,7 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
             console.print("[yellow]Warning: --diff-only is ignored for inline code snippets[/yellow]")
     else:
         console.print("[red]Error: Provide either a file path or --code option[/red]")
-        console.print("Run 'consensus review --help' for usage.")
+        console.print("Run 'consensys review --help' for usage.")
         sys.exit(1)
 
     # Detect language from file or code content
@@ -312,7 +312,7 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
             f"[dim]Session ID: {orchestrator.session_id}[/dim]"
         )
         console.print(
-            f"[dim]Replay with: consensus replay {orchestrator.session_id}[/dim]"
+            f"[dim]Replay with: consensys replay {orchestrator.session_id}[/dim]"
         )
 
         # Auto-fix if requested
@@ -372,7 +372,7 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
                     console.print(f"[green]Fixed code written to: {output_path}[/green]")
                 elif file:
                     console.print()
-                    console.print(f"[dim]To overwrite original: consensus review {file} --fix --output {file}[/dim]")
+                    console.print(f"[dim]To overwrite original: consensys review {file} --fix --output {file}[/dim]")
 
         # Display severity filtering summary if enabled
         if min_severity:
@@ -414,14 +414,14 @@ def history(limit: int):
     """Show past review sessions.
 
     Lists recent review sessions with their IDs, dates, and final decisions.
-    Use 'consensus replay <session_id>' to view a past debate.
+    Use 'consensys replay <session_id>' to view a past debate.
     """
     storage = Storage()
     sessions = storage.list_sessions(limit=limit)
 
     if not sessions:
         console.print("[yellow]No review sessions found.[/yellow]")
-        console.print("Run 'consensus review <file>' to start a review.")
+        console.print("Run 'consensys review <file>' to start a review.")
         return
 
     table = Table(
@@ -463,7 +463,7 @@ def history(limit: int):
     console.print()
     console.print(table)
     console.print()
-    console.print("[dim]Use 'consensus replay <session_id>' to view a session[/dim]")
+    console.print("[dim]Use 'consensys replay <session_id>' to view a session[/dim]")
 
 
 @cli.command()
@@ -482,7 +482,7 @@ def replay(session_id: str):
 
     if not matching:
         console.print(f"[red]Session not found: {session_id}[/red]")
-        console.print("Run 'consensus history' to see available sessions.")
+        console.print("Run 'consensys history' to see available sessions.")
         return
 
     if len(matching) > 1:
@@ -745,8 +745,8 @@ def pr(pr_number: int, post: bool):
 
     \b
     Examples:
-        consensus pr 123
-        consensus pr 123 --post  # Post summary to PR
+        consensys pr 123
+        consensys pr 123 --post  # Post summary to PR
 
     Requires: gh CLI (https://cli.github.com) authenticated
     """
@@ -778,7 +778,7 @@ def pr(pr_number: int, post: bool):
     if session_id:
         console.print()
         console.print(f"[dim]Session ID: {session_id}[/dim]")
-        console.print(f"[dim]Replay with: consensus replay {session_id}[/dim]")
+        console.print(f"[dim]Replay with: consensys replay {session_id}[/dim]")
 
         if post:
             # Build summary comment
@@ -808,7 +808,7 @@ def pr(pr_number: int, post: bool):
                     for suggestion in consensus_result.accepted_suggestions[:5]:
                         comment += f"- {suggestion}\n"
 
-                comment += f"\n---\n*Generated by [Consensus](https://github.com/consensus) - Multi-agent AI code review*"
+                comment += f"\n---\n*Generated by [Consensys](https://github.com/noah-ing/consensys) - Multi-agent AI code review*"
 
                 console.print()
                 console.print("[dim]Posting comment to PR...[/dim]")
@@ -829,7 +829,7 @@ def diff():
     \b
     Example:
         cd my-project
-        consensus diff
+        consensys diff
     """
     if not is_git_repo():
         console.print("[red]Error: Not in a git repository.[/red]")
@@ -859,7 +859,7 @@ def diff():
     if session_id:
         console.print()
         console.print(f"[dim]Session ID: {session_id}[/dim]")
-        console.print(f"[dim]Replay with: consensus replay {session_id}[/dim]")
+        console.print(f"[dim]Replay with: consensys replay {session_id}[/dim]")
 
 
 @cli.command("commit")
@@ -872,7 +872,7 @@ def commit_review():
     \b
     Example:
         git add myfile.py
-        consensus commit
+        consensys commit
         git commit -m "My changes"
     """
     if not is_git_repo():
@@ -904,7 +904,7 @@ def commit_review():
     if session_id:
         console.print()
         console.print(f"[dim]Session ID: {session_id}[/dim]")
-        console.print(f"[dim]Replay with: consensus replay {session_id}[/dim]")
+        console.print(f"[dim]Replay with: consensys replay {session_id}[/dim]")
 
 
 @cli.command()
@@ -918,8 +918,8 @@ def export(session_id: str, output_format: str, output_path: Optional[str]):
 
     \b
     Examples:
-        consensus export abc123 --format md
-        consensus export abc123 --format html -o review.html
+        consensys export abc123 --format md
+        consensys export abc123 --format html -o review.html
     """
     exporter = DebateExporter()
 
@@ -929,7 +929,7 @@ def export(session_id: str, output_format: str, output_path: Optional[str]):
 
     if not matching:
         console.print(f"[red]Session not found: {session_id}[/red]")
-        console.print("Run 'consensus history' to see available sessions.")
+        console.print("Run 'consensys history' to see available sessions.")
         return
 
     if len(matching) > 1:
@@ -976,7 +976,7 @@ def stats():
 
     if stats_data["total_sessions"] == 0:
         console.print("[yellow]No review sessions found.[/yellow]")
-        console.print("Run 'consensus review <file>' to start reviewing code.")
+        console.print("Run 'consensys review <file>' to start reviewing code.")
         return
 
     console.print()
@@ -1046,8 +1046,8 @@ def stats():
         console.print()
 
     # Summary insights
-    console.print("[dim]Run 'consensus history' to see individual sessions.[/dim]")
-    console.print("[dim]Run 'consensus export <session_id> --format html' for detailed reports.[/dim]")
+    console.print("[dim]Run 'consensys history' to see individual sessions.[/dim]")
+    console.print("[dim]Run 'consensys export <session_id> --format html' for detailed reports.[/dim]")
 
 
 @cli.command()
@@ -1065,10 +1065,10 @@ def metrics(period: str, days: int, budget: Optional[float]):
 
     \b
     Examples:
-        consensus metrics                      # Show summary
-        consensus metrics --period weekly      # Weekly breakdown
-        consensus metrics --days 7             # Last 7 days only
-        consensus metrics --budget 10.00       # Set $10 budget alert
+        consensys metrics                      # Show summary
+        consensys metrics --period weekly      # Weekly breakdown
+        consensys metrics --days 7             # Last 7 days only
+        consensys metrics --budget 10.00       # Set $10 budget alert
     """
     from src.metrics import get_metrics_tracker, PRICING
 
@@ -1077,7 +1077,7 @@ def metrics(period: str, days: int, budget: Optional[float]):
 
     if summary.total_calls == 0:
         console.print("[yellow]No API metrics recorded yet.[/yellow]")
-        console.print("Run 'consensus review <file>' to start generating metrics.")
+        console.print("Run 'consensys review <file>' to start generating metrics.")
         return
 
     console.print()
@@ -1202,7 +1202,7 @@ def metrics(period: str, days: int, budget: Optional[float]):
     console.print(f"[dim]  Input: ${PRICING['claude-3-5-haiku-20241022']['input_per_million']:.2f}/M tokens[/dim]")
     console.print(f"[dim]  Output: ${PRICING['claude-3-5-haiku-20241022']['output_per_million']:.2f}/M tokens[/dim]")
     console.print()
-    console.print("[dim]Run 'consensus metrics --budget 10.00' to set budget alerts.[/dim]")
+    console.print("[dim]Run 'consensys metrics --budget 10.00' to set budget alerts.[/dim]")
 
 
 def load_consensusignore(directory: Path) -> list:
@@ -1324,11 +1324,11 @@ def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
 
     \b
     Examples:
-        consensus review-batch src/
-        consensus review-batch . --parallel 8
-        consensus review-batch src/ --quick --no-cache
-        consensus review-batch src/ --fail-on HIGH
-        consensus review-batch src/ --report batch_report.md
+        consensys review-batch src/
+        consensys review-batch . --parallel 8
+        consensys review-batch src/ --quick --no-cache
+        consensys review-batch src/ --fail-on HIGH
+        consensys review-batch src/ --report batch_report.md
 
     Respects .consensusignore file for exclusions. Create a .consensusignore
     file in your project root with glob patterns to exclude:
@@ -1362,7 +1362,7 @@ def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
     if dir_path.is_file():
         if not dir_path.suffix == ".py":
             console.print("[red]Error: Single file must be a Python file (.py)[/red]")
-            console.print("[dim]Use 'consensus review <file>' for single file review.[/dim]")
+            console.print("[dim]Use 'consensys review <file>' for single file review.[/dim]")
             sys.exit(1)
         files = [dir_path]
         ignore_patterns = []
@@ -1647,7 +1647,7 @@ def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
         report_lines.extend([
             "",
             "---",
-            "*Generated by [Consensus](https://github.com/consensus) - Multi-agent AI code review*",
+            "*Generated by [Consensys](https://github.com/noah-ing/consensys) - Multi-agent AI code review*",
         ])
 
         report_path.write_text("\n".join(report_lines))
@@ -1658,7 +1658,7 @@ def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
     session_ids = [r.session_id for r in results if r.session_id]
     if session_ids:
         console.print("[dim]Replay individual reviews with:[/dim]")
-        console.print(f"[dim]  consensus replay <session_id>[/dim]")
+        console.print(f"[dim]  consensys replay <session_id>[/dim]")
         console.print()
 
     # Check fail-on threshold
@@ -1681,10 +1681,10 @@ def add_persona(name: str, role: str, style: str):
 
     \b
     Example:
-        consensus add-persona
+        consensys add-persona
         # Follow the interactive prompts
 
-        consensus add-persona --name DatabaseExpert --role "DBA" --style "data-driven"
+        consensys add-persona --name DatabaseExpert --role "DBA" --style "data-driven"
         # Still prompts for system_prompt and priorities
     """
     # Check if name already exists
@@ -1762,7 +1762,7 @@ def add_persona(name: str, role: str, style: str):
         border_style="green",
     ))
     console.print()
-    console.print("[dim]Use 'consensus set-team' to add this persona to your review team.[/dim]")
+    console.print("[dim]Use 'consensys set-team' to add this persona to your review team.[/dim]")
 
 
 @cli.command("set-team")
@@ -1776,9 +1776,9 @@ def set_team(personas: tuple, preset: Optional[str]):
 
     \b
     Examples:
-        consensus set-team --preset security-focused
-        consensus set-team SecurityExpert PragmaticDev
-        consensus set-team Security Performance  # Partial name matching
+        consensys set-team --preset security-focused
+        consensys set-team SecurityExpert PragmaticDev
+        consensys set-team Security Performance  # Partial name matching
     """
     if preset:
         # Use preset team
@@ -1926,9 +1926,9 @@ def teams():
         console.print(custom_table)
         console.print()
 
-    console.print("[dim]Use 'consensus set-team --preset <name>' to select a preset.[/dim]")
-    console.print("[dim]Use 'consensus set-team <persona1> <persona2>' for custom selection.[/dim]")
-    console.print("[dim]Use 'consensus add-persona' to create a new persona.[/dim]")
+    console.print("[dim]Use 'consensys set-team --preset <name>' to select a preset.[/dim]")
+    console.print("[dim]Use 'consensys set-team <persona1> <persona2>' for custom selection.[/dim]")
+    console.print("[dim]Use 'consensys add-persona' to create a new persona.[/dim]")
 
 
 @cli.command("install-hooks")
@@ -1937,7 +1937,7 @@ def teams():
 def install_hooks(git: bool, claude: bool):
     """Install consensus hooks for automatic code review.
 
-    Installs hooks that automatically run consensus review:
+    Installs hooks that automatically run consensys review:
 
     \b
     Git pre-commit: Reviews staged Python files before commit
@@ -2029,7 +2029,7 @@ def config_show():
 
     \b
     Examples:
-        consensus config show
+        consensys config show
     """
     from src.settings import (
         load_config,
@@ -2142,7 +2142,7 @@ def config_show():
         console.print("[dim]YAML support: [yellow]not available[/yellow] (install pyyaml)[/dim]")
 
     console.print()
-    console.print("[dim]Create a config file with: consensus config init[/dim]")
+    console.print("[dim]Create a config file with: consensys config init[/dim]")
     console.print("[dim]Config files are YAML or JSON format.[/dim]")
 
 
@@ -2156,9 +2156,9 @@ def config_init(project: bool, user: bool):
 
     \b
     Examples:
-        consensus config init --project   # Create .consensus.yaml
-        consensus config init --user      # Create ~/.consensus/config.yaml
-        consensus config init             # Interactive selection
+        consensys config init --project   # Create .consensus.yaml
+        consensys config init --user      # Create ~/.consensus/config.yaml
+        consensys config init             # Interactive selection
     """
     from src.settings import create_example_config, get_user_config_file
 
@@ -2195,7 +2195,7 @@ def config_init(project: bool, user: bool):
 
     console.print()
     console.print("[dim]Edit the config file to customize settings.[/dim]")
-    console.print("[dim]Run 'consensus config show' to verify.[/dim]")
+    console.print("[dim]Run 'consensys config show' to verify.[/dim]")
 
 
 @config.command("path")
@@ -2250,7 +2250,7 @@ def web_server(host: str, port: int):
         import uvicorn
     except ImportError:
         console.print("[red]Error: uvicorn not installed.[/red]")
-        console.print("Install web dependencies with: pip install consensus[web]")
+        console.print("Install web dependencies with: pip install consensys[web]")
         console.print("Or: pip install uvicorn fastapi websockets")
         sys.exit(1)
 

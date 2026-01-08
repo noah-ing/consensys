@@ -1,4 +1,4 @@
-"""Git helper functions for Consensus code review."""
+"""Git helper functions for Consensys code review."""
 import subprocess
 import json
 from dataclasses import dataclass

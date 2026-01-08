@@ -1,6 +1,6 @@
-# Contributing to Consensus
+# Contributing to Consensys
 
-Thank you for your interest in contributing to Consensus! This document provides guidelines and instructions for contributing.
+Thank you for your interest in contributing to Consensys! This document provides guidelines and instructions for contributing.
 
 ## Code of Conduct
 
@@ -18,8 +18,8 @@ Be respectful and constructive. We're all here to build something great together
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/consensus-review/consensus.git
-   cd consensus
+   git clone https://github.com/noah-ing/consensys.git
+   cd consensys
    ```
 
 2. **Create a virtual environment:**
@@ -52,7 +52,7 @@ consensus/
 │   ├── db/             # SQLite storage layer
 │   ├── export/         # Markdown/HTML export
 │   ├── git/            # Git integration helpers
-│   ├── models/         # Data models (Review, Vote, Consensus)
+│   ├── models/         # Data models (Review, Vote, Consensys)
 │   ├── orchestrator/   # Multi-agent debate coordinator
 │   ├── personas/       # Custom personas and teams
 │   ├── web/            # FastAPI web server
@@ -262,4 +262,4 @@ By contributing, you agree that your contributions will be licensed under the MI
 
 ---
 
-Thank you for contributing to Consensus!
+Thank you for contributing to Consensys!

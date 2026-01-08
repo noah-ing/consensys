@@ -1,4 +1,4 @@
-"""Configuration for the Consensus code review system."""
+"""Configuration for the Consensys code review system."""
 import os
 from pathlib import Path
 from dotenv import load_dotenv

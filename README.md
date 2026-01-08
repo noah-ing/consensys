@@ -1,12 +1,12 @@
-# Consensus
+# Consensys
 
 **Multi-agent AI code review with debate and voting.**
 
-[![PyPI version](https://badge.fury.io/py/consensus-review.svg)](https://badge.fury.io/py/consensus-review)
+[![PyPI version](https://badge.fury.io/py/consensys-review.svg)](https://badge.fury.io/py/consensys-review)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 
-Consensus brings together multiple AI experts to review your code, debate their findings, and reach a collective decision. Each expert has a unique perspective:
+Consensys brings together multiple AI experts to review your code, debate their findings, and reach a collective decision. Each expert has a unique perspective:
 
 - **SecurityExpert** - Focuses on vulnerabilities, injection attacks, and security best practices
 - **PerformanceEngineer** - Analyzes efficiency, optimization opportunities, and resource usage
@@ -17,25 +17,25 @@ Consensus brings together multiple AI experts to review your code, debate their 
 
 ```bash
 # Install
-pip install consensus-review
+pip install consensys
 
 # Set your API key
 export ANTHROPIC_API_KEY="your-api-key"
 
 # Review a file
-consensus review myfile.py
+consensys review myfile.py
 
 # Quick review (faster, for pre-commit hooks)
-consensus review myfile.py --quick
+consensys review myfile.py --quick
 
 # Review with auto-fix suggestions
-consensus review myfile.py --fix
+consensys review myfile.py --fix
 ```
 
 ## Features
 
 - **Multi-agent debate** - AI experts discuss and challenge each other's findings
-- **Consensus voting** - Final decision based on expert votes (APPROVE/REJECT/ABSTAIN)
+- **Consensys voting** - Final decision based on expert votes (APPROVE/REJECT/ABSTAIN)
 - **Smart caching** - Avoid redundant API calls for unchanged code
 - **Language detection** - Supports 14+ programming languages with context-aware prompts
 - **CI/CD integration** - GitHub Action, pre-commit hooks, and fail-on thresholds
@@ -46,14 +46,14 @@ consensus review myfile.py --fix
 
 ```bash
 # From PyPI
-pip install consensus-review
+pip install consensys
 
 # With web UI support
-pip install consensus-review[web]
+pip install consensys[web]
 
 # From source
-git clone https://github.com/consensus-review/consensus.git
-cd consensus
+git clone https://github.com/noah-ing/consensys.git
+cd consensys
 pip install -e .
 ```
 
@@ -63,85 +63,85 @@ pip install -e .
 
 ```bash
 # Basic review
-consensus review path/to/file.py
+consensys review path/to/file.py
 
 # Review inline code snippet
-consensus review --code 'def foo(): pass'
+consensys review --code 'def foo(): pass'
 
 # Quick mode (Round 1 only, ~3 seconds)
-consensus review file.py --quick
+consensys review file.py --quick
 
 # Stream AI thinking in real-time
-consensus review file.py --stream
+consensys review file.py --stream
 
 # CI mode: fail on HIGH severity or above
-consensus review file.py --fail-on HIGH
+consensys review file.py --fail-on HIGH
 
 # Only show MEDIUM+ severity issues
-consensus review file.py --min-severity MEDIUM
+consensys review file.py --min-severity MEDIUM
 
 # Review only changed lines (git diff)
-consensus review file.py --diff-only
+consensys review file.py --diff-only
 
 # Auto-fix based on review feedback
-consensus review file.py --fix --output fixed.py
+consensys review file.py --fix --output fixed.py
 ```
 
 ### Batch Review
 
 ```bash
 # Review all Python files in a directory
-consensus review-batch src/
+consensys review-batch src/
 
 # Parallel processing with 8 workers
-consensus review-batch src/ --parallel 8
+consensys review-batch src/ --parallel 8
 
 # Generate markdown report
-consensus review-batch src/ --report report.md
+consensys review-batch src/ --report report.md
 
 # CI mode for batch review
-consensus review-batch src/ --fail-on HIGH --quick
+consensys review-batch src/ --fail-on HIGH --quick
 ```
 
 ### Git Integration
 
 ```bash
 # Review all uncommitted changes
-consensus diff
+consensys diff
 
 # Review only staged changes (pre-commit)
-consensus commit
+consensys commit
 
 # Review a GitHub PR
-consensus pr 123
+consensys pr 123
 
 # Post review as PR comment
-consensus pr 123 --post
+consensys pr 123 --post
 ```
 
 ### History and Replay
 
 ```bash
 # List recent review sessions
-consensus history
+consensys history
 
 # Replay a past review
-consensus replay abc123
+consensys replay abc123
 
 # Export to markdown
-consensus export abc123 --format md
+consensys export abc123 --format md
 
 # Export to HTML
-consensus export abc123 --format html
+consensys export abc123 --format html
 ```
 
 ## GitHub Action
 
-Automatically review pull requests with Consensus.
+Automatically review pull requests with Consensys.
 
 ### Basic Setup
 
-Add to `.github/workflows/consensus.yml`:
+Add to `.github/workflows/consensys.yml`:
 
 ```yaml
 name: Code Review
@@ -160,7 +160,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: consensus-review/consensus@v1
+      - uses: noah-ing/consensys@v1
         with:
           api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           fail_on: 'HIGH'
@@ -191,7 +191,7 @@ jobs:
 ### Advanced Workflow Example
 
 ```yaml
-name: Consensus Code Review
+name: Consensys Code Review
 
 on:
   pull_request:
@@ -202,7 +202,7 @@ on:
       - '**.go'
 
 concurrency:
-  group: consensus-${{ github.event.pull_request.number }}
+  group: consensys-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
 jobs:
@@ -217,7 +217,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: consensus-review/consensus@v1
+      - uses: noah-ing/consensys@v1
         id: review
         with:
           api_key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -238,7 +238,7 @@ jobs:
 If you prefer to use the workflow file directly:
 
 ```yaml
-# Copy .github/workflows/consensus-review.yml to your repo
+# Copy .github/workflows/consensys-review.yml to your repo
 # Set ANTHROPIC_API_KEY in repository secrets
 ```
 
@@ -273,28 +273,28 @@ Or user-level config at `~/.consensus/config.yaml`.
 
 ```bash
 # Initialize config
-consensus config init --project
-consensus config init --user
+consensys config init --project
+consensys config init --user
 
 # View current config
-consensus config show
+consensys config show
 ```
 
 ### Team Configuration
 
 ```bash
 # Use a preset team
-consensus set-team --preset security-focused
-consensus set-team --preset quick-check
+consensys set-team --preset security-focused
+consensys set-team --preset quick-check
 
 # Custom team
-consensus set-team SecurityExpert PragmaticDev
+consensys set-team SecurityExpert PragmaticDev
 
 # Create custom persona
-consensus add-persona
+consensys add-persona
 
 # List available teams
-consensus teams
+consensys teams
 ```
 
 #### Available Presets
@@ -308,7 +308,7 @@ consensus teams
 
 ## Pre-commit Hook
 
-Integrate Consensus with the [pre-commit](https://pre-commit.com) framework for automatic code review on every commit.
+Integrate Consensys with the [pre-commit](https://pre-commit.com) framework for automatic code review on every commit.
 
 ### Basic Setup
 
@@ -316,67 +316,67 @@ Add to `.pre-commit-config.yaml`:
 
 ```yaml
 repos:
-  - repo: https://github.com/consensus-review/consensus
+  - repo: https://github.com/noah-ing/consensys
     rev: v0.1.0
     hooks:
-      - id: consensus-review
+      - id: consensys-review
 ```
 
 ### Available Hooks
 
 | Hook ID | Description | Default Behavior |
 |---------|-------------|------------------|
-| `consensus-review` | Quick AI code review | Python files, warn on issues |
-| `consensus-review-strict` | Strict mode | Fails on HIGH severity or above |
-| `consensus-review-all` | Multi-language | Python, JS, TS, Go, Rust, Java, etc. |
+| `consensys-review` | Quick AI code review | Python files, warn on issues |
+| `consensys-review-strict` | Strict mode | Fails on HIGH severity or above |
+| `consensys-review-all` | Multi-language | Python, JS, TS, Go, Rust, Java, etc. |
 
 ### Configuration Examples
 
 **Quick review (default):**
 ```yaml
 repos:
-  - repo: https://github.com/consensus-review/consensus
+  - repo: https://github.com/noah-ing/consensys
     rev: v0.1.0
     hooks:
-      - id: consensus-review
+      - id: consensys-review
 ```
 
 **Strict mode - fail on HIGH severity:**
 ```yaml
 repos:
-  - repo: https://github.com/consensus-review/consensus
+  - repo: https://github.com/noah-ing/consensys
     rev: v0.1.0
     hooks:
-      - id: consensus-review-strict
+      - id: consensys-review-strict
 ```
 
 **Custom severity threshold:**
 ```yaml
 repos:
-  - repo: https://github.com/consensus-review/consensus
+  - repo: https://github.com/noah-ing/consensys
     rev: v0.1.0
     hooks:
-      - id: consensus-review
+      - id: consensys-review
         args: ['--fail-on', 'CRITICAL']
 ```
 
 **Only specific files:**
 ```yaml
 repos:
-  - repo: https://github.com/consensus-review/consensus
+  - repo: https://github.com/noah-ing/consensys
     rev: v0.1.0
     hooks:
-      - id: consensus-review
+      - id: consensys-review
         files: ^src/
 ```
 
 **Multiple languages:**
 ```yaml
 repos:
-  - repo: https://github.com/consensus-review/consensus
+  - repo: https://github.com/noah-ing/consensys
     rev: v0.1.0
     hooks:
-      - id: consensus-review-all
+      - id: consensys-review-all
         args: ['--fail-on', 'HIGH']
 ```
 
@@ -393,15 +393,15 @@ pre-commit install
 pre-commit run --all-files
 
 # Run on staged files
-pre-commit run consensus-review
+pre-commit run consensys-review
 
 # Test from repo
-pre-commit try-repo . consensus-review --files myfile.py
+pre-commit try-repo . consensys-review --files myfile.py
 ```
 
 ### Hook Arguments
 
-The hooks accept any arguments supported by `consensus review`:
+The hooks accept any arguments supported by `consensys review`:
 
 | Argument | Description |
 |----------|-------------|
@@ -422,11 +422,11 @@ For CI environments, add the key to your secrets manager.
 
 ## API Usage
 
-Use Consensus programmatically:
+Use Consensys programmatically:
 
 ```python
-from consensus import DebateOrchestrator
-from consensus.personas import PERSONAS
+from consensys import DebateOrchestrator
+from consensys.personas import PERSONAS
 
 # Create orchestrator
 orchestrator = DebateOrchestrator(personas=PERSONAS)
@@ -445,16 +445,16 @@ print(f"Key Issues: {consensus.key_issues}")
 
 ## Web UI
 
-Consensus includes a web-based interface for code reviews with real-time streaming.
+Consensys includes a web-based interface for code reviews with real-time streaming.
 
 ### Starting the Server
 
 ```bash
 # Start web server on default port 8000
-consensus web
+consensys web
 
 # Custom host and port
-consensus web --host 0.0.0.0 --port 3000
+consensys web --host 0.0.0.0 --port 3000
 ```
 
 Open `http://localhost:8000` in your browser.
@@ -560,7 +560,7 @@ ws.onmessage = (event) => {
 
 ## VS Code Extension
 
-Review code directly in your editor with the Consensus VS Code extension.
+Review code directly in your editor with the Consensys VS Code extension.
 
 ### Installation
 
@@ -576,10 +576,10 @@ npm run package
 
 ### Prerequisites
 
-The extension requires the Consensus web server running:
+The extension requires the Consensys web server running:
 
 ```bash
-consensus web  # Starts on http://localhost:8000
+consensys web  # Starts on http://localhost:8000
 ```
 
 ### Features
@@ -595,7 +595,7 @@ consensus web  # Starts on http://localhost:8000
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `consensus.apiEndpoint` | URL of Consensus web API | `http://localhost:8000` |
+| `consensus.apiEndpoint` | URL of Consensys web API | `http://localhost:8000` |
 | `consensus.autoReviewOnSave` | Review files automatically on save | `false` |
 
 ### Status Bar Icons
@@ -611,21 +611,21 @@ consensus web  # Starts on http://localhost:8000
 ### Context Menu
 
 Right-click in the editor to access:
-- **Consensus: Review Current File**
-- **Consensus: Review Selection**
+- **Consensys: Review Current File**
+- **Consensys: Review Selection**
 
 ## Docker
 
-Deploy Consensus as a containerized web service.
+Deploy Consensys as a containerized web service.
 
 ### Quick Start
 
 ```bash
 # Build the image
-docker build -t consensus .
+docker build -t consensys .
 
 # Run with API key
-docker run -p 8000:8000 -e ANTHROPIC_API_KEY=your-key consensus
+docker run -p 8000:8000 -e ANTHROPIC_API_KEY=your-key consensys
 ```
 
 ### Docker Compose
@@ -637,18 +637,18 @@ For persistent storage and easier management:
 version: "3.8"
 
 services:
-  consensus:
+  consensys:
     build: .
     ports:
       - "8000:8000"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
-      - consensus-data:/app/data
+      - consensys-data:/app/data
     restart: unless-stopped
 
 volumes:
-  consensus-data:
+  consensys-data:
 ```
 
 ```bash
@@ -674,7 +674,7 @@ docker-compose down
 The container includes a health check that pings `/api/health`:
 
 ```bash
-docker inspect --format='{{.State.Health.Status}}' consensus-web
+docker inspect --format='{{.State.Health.Status}}' consensys-web
 ```
 
 ### Production Deployment
@@ -690,7 +690,7 @@ Example with resource limits:
 
 ```yaml
 services:
-  consensus:
+  consensys:
     build: .
     deploy:
       resources:
@@ -706,18 +706,18 @@ services:
 
 ```bash
 # View API usage and costs
-consensus metrics
+consensys metrics
 
 # Weekly breakdown
-consensus metrics --period weekly
+consensys metrics --period weekly
 
 # Set budget alert
-consensus metrics --budget 10.00
+consensys metrics --budget 10.00
 ```
 
 ## Supported Languages
 
-Consensus provides language-specific review hints for:
+Consensys provides language-specific review hints for:
 
 - Python, JavaScript, TypeScript
 - Go, Rust, Java
@@ -743,18 +743,18 @@ The `examples/` directory contains sample files to help you get started:
 
 ```bash
 # Clone the repository
-git clone https://github.com/consensus-review/consensus.git
-cd consensus
+git clone https://github.com/noah-ing/consensys.git
+cd consensys
 
 # Install
 pip install -e .
 export ANTHROPIC_API_KEY="your-api-key"
 
 # Review vulnerable code (will find issues)
-consensus review examples/vulnerable.py --quick
+consensys review examples/vulnerable.py --quick
 
 # Review clean code (should pass)
-consensus review examples/clean.py --quick
+consensys review examples/clean.py --quick
 
 # Run the full demo script
 ./examples/review-demo.sh
@@ -777,10 +777,10 @@ The `vulnerable.py` file demonstrates 12 common security issues:
 11. **Race Conditions** - TOCTOU in bank account
 12. **Sensitive Data Logging** - Card numbers in logs
 
-Run Consensus to see how the AI agents identify each issue:
+Run Consensys to see how the AI agents identify each issue:
 
 ```bash
-consensus review examples/vulnerable.py
+consensys review examples/vulnerable.py
 ```
 
 ### Clean Code Example
@@ -825,10 +825,10 @@ Copy the workflow to enable PR reviews:
 
 ```bash
 mkdir -p .github/workflows
-cp examples/github-workflow.yml .github/workflows/consensus.yml
+cp examples/github-workflow.yml .github/workflows/consensys.yml
 ```
 
-Add `ANTHROPIC_API_KEY` to your repository secrets, and Consensus will automatically review pull requests.
+Add `ANTHROPIC_API_KEY` to your repository secrets, and Consensys will automatically review pull requests.
 
 ## License
 

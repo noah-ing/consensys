@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-# Consensus Code Review - Demo Script
+# Consensys Code Review - Demo Script
 #
-# This script demonstrates various CLI usage patterns for Consensus.
-# Run individual sections or the whole script to see Consensus in action.
+# This script demonstrates various CLI usage patterns for Consensys.
+# Run individual sections or the whole script to see Consensys in action.
 #
 # Prerequisites:
-#   - pip install consensus-review
+#   - pip install consensys
 #   - export ANTHROPIC_API_KEY="your-api-key"
 
 set -e
@@ -18,14 +18,14 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}============================================${NC}"
-echo -e "${BLUE}   Consensus Code Review Demo${NC}"
+echo -e "${BLUE}   Consensys Code Review Demo${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 
 # Check prerequisites
-if ! command -v consensus &> /dev/null; then
-    echo -e "${YELLOW}Error: 'consensus' command not found.${NC}"
-    echo "Please install with: pip install consensus-review"
+if ! command -v consensys &> /dev/null; then
+    echo -e "${YELLOW}Error: 'consensys' command not found.${NC}"
+    echo "Please install with: pip install consensys"
     exit 1
 fi
 
@@ -40,36 +40,36 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Demo 1: Quick review of vulnerable code
 echo -e "${GREEN}Demo 1: Quick review of vulnerable.py${NC}"
-echo "Command: consensus review examples/vulnerable.py --quick"
+echo "Command: consensys review examples/vulnerable.py --quick"
 echo ""
-consensus review "$SCRIPT_DIR/vulnerable.py" --quick || true
+consensys review "$SCRIPT_DIR/vulnerable.py" --quick || true
 echo ""
 echo -e "${GREEN}---${NC}"
 echo ""
 
 # Demo 2: Review inline code snippet
 echo -e "${GREEN}Demo 2: Review inline code snippet${NC}"
-echo "Command: consensus review --code 'password = \"admin123\"' --quick"
+echo "Command: consensys review --code 'password = \"admin123\"' --quick"
 echo ""
-consensus review --code 'password = "admin123"' --quick || true
+consensys review --code 'password = "admin123"' --quick || true
 echo ""
 echo -e "${GREEN}---${NC}"
 echo ""
 
 # Demo 3: Filter by severity
 echo -e "${GREEN}Demo 3: Show only HIGH+ severity issues${NC}"
-echo "Command: consensus review examples/vulnerable.py --quick --min-severity HIGH"
+echo "Command: consensys review examples/vulnerable.py --quick --min-severity HIGH"
 echo ""
-consensus review "$SCRIPT_DIR/vulnerable.py" --quick --min-severity HIGH || true
+consensys review "$SCRIPT_DIR/vulnerable.py" --quick --min-severity HIGH || true
 echo ""
 echo -e "${GREEN}---${NC}"
 echo ""
 
 # Demo 4: CI mode - fail on critical issues
 echo -e "${GREEN}Demo 4: CI mode - fail on CRITICAL issues${NC}"
-echo "Command: consensus review examples/vulnerable.py --quick --fail-on CRITICAL"
+echo "Command: consensys review examples/vulnerable.py --quick --fail-on CRITICAL"
 echo ""
-if consensus review "$SCRIPT_DIR/vulnerable.py" --quick --fail-on CRITICAL; then
+if consensys review "$SCRIPT_DIR/vulnerable.py" --quick --fail-on CRITICAL; then
     echo -e "${GREEN}Review passed!${NC}"
 else
     echo -e "${YELLOW}Review failed due to CRITICAL issues.${NC}"
@@ -80,36 +80,36 @@ echo ""
 
 # Demo 5: Review clean code
 echo -e "${GREEN}Demo 5: Review well-written code${NC}"
-echo "Command: consensus review examples/clean.py --quick"
+echo "Command: consensys review examples/clean.py --quick"
 echo ""
-consensus review "$SCRIPT_DIR/clean.py" --quick || true
+consensys review "$SCRIPT_DIR/clean.py" --quick || true
 echo ""
 echo -e "${GREEN}---${NC}"
 echo ""
 
 # Demo 6: View review history
 echo -e "${GREEN}Demo 6: View review history${NC}"
-echo "Command: consensus history"
+echo "Command: consensys history"
 echo ""
-consensus history || true
+consensys history || true
 echo ""
 echo -e "${GREEN}---${NC}"
 echo ""
 
 # Demo 7: Show available teams
 echo -e "${GREEN}Demo 7: Show available teams and personas${NC}"
-echo "Command: consensus teams"
+echo "Command: consensys teams"
 echo ""
-consensus teams || true
+consensys teams || true
 echo ""
 echo -e "${GREEN}---${NC}"
 echo ""
 
 # Demo 8: View metrics
 echo -e "${GREEN}Demo 8: View API usage metrics${NC}"
-echo "Command: consensus metrics"
+echo "Command: consensys metrics"
 echo ""
-consensus metrics || true
+consensys metrics || true
 echo ""
 
 echo -e "${BLUE}============================================${NC}"
@@ -117,10 +117,10 @@ echo -e "${BLUE}   Demo Complete!${NC}"
 echo -e "${BLUE}============================================${NC}"
 echo ""
 echo "More examples:"
-echo "  consensus review file.py              # Full debate"
-echo "  consensus review file.py --stream     # Live streaming"
-echo "  consensus review-batch src/           # Review directory"
-echo "  consensus pr 123                      # Review GitHub PR"
-echo "  consensus diff                        # Review uncommitted changes"
-echo "  consensus export <session-id> -f html # Export to HTML"
-echo "  consensus web                         # Start web UI"
+echo "  consensys review file.py              # Full debate"
+echo "  consensys review file.py --stream     # Live streaming"
+echo "  consensys review-batch src/           # Review directory"
+echo "  consensys pr 123                      # Review GitHub PR"
+echo "  consensys diff                        # Review uncommitted changes"
+echo "  consensys export <session-id> -f html # Export to HTML"
+echo "  consensys web                         # Start web UI"

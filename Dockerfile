@@ -1,4 +1,4 @@
-# Consensus - Multi-agent Code Review
+# Consensys - Multi-agent Code Review
 # Multi-stage Docker build for optimized image size
 
 # ============================================
@@ -37,18 +37,18 @@ COPY --from=builder /opt/venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Create non-root user for security
-RUN useradd --create-home --shell /bin/bash consensus && \
+RUN useradd --create-home --shell /bin/bash consensys && \
     mkdir -p /app/data && \
-    chown -R consensus:consensus /app
+    chown -R consensys:consensys /app
 
 # Copy application code
-COPY --chown=consensus:consensus . .
+COPY --chown=consensys:consensys . .
 
 # Install the package in the runtime environment
 RUN pip install --no-cache-dir -e ".[web]"
 
 # Switch to non-root user
-USER consensus
+USER consensys
 
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \

@@ -1,4 +1,4 @@
-"""Data models for the Consensus code review system."""
+"""Data models for the Consensys code review system."""
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional
 from enum import Enum

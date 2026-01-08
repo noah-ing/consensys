@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consensus - Multi-Agent AI Code Review</title>
+    <title>Consensys - Multi-Agent AI Code Review</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Prism.js for syntax highlighting -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
@@ -172,7 +172,7 @@
                     </svg>
                 </div>
                 <div>
-                    <h1 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Consensus</h1>
+                    <h1 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Consensys</h1>
                     <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 hidden sm:block">Multi-Agent AI Code Review</p>
                 </div>
             </div>
@@ -284,7 +284,7 @@ def example_function():
 
         <!-- Results Section -->
         <div id="results-section" class="hidden space-y-6 sm:space-y-8">
-            <!-- Consensus Summary -->
+            <!-- Consensys Summary -->
             <div id="consensus-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border-2 p-4 sm:p-6 fade-in">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                     <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center">
@@ -631,7 +631,7 @@ def example_function():
                     votesSection.classList.remove('hidden');
                     break;
                 case 'consensus':
-                    displayConsensus(msg.data);
+                    displayConsensys(msg.data);
                     break;
                 case 'complete':
                     statusSection.classList.add('hidden');
@@ -747,9 +747,9 @@ def example_function():
                 data.votes.forEach(v => addVotePanel(v));
             }
 
-            // Consensus
+            // Consensys
             if (data.consensus) {
-                displayConsensus(data.consensus);
+                displayConsensys(data.consensus);
             }
         }
 
@@ -891,7 +891,7 @@ def example_function():
             votesContainer.insertAdjacentHTML('beforeend', html);
         }
 
-        function displayConsensus(consensus) {
+        function displayConsensys(consensus) {
             consensusPanel.classList.remove('hidden');
 
             const decision = consensus.decision;

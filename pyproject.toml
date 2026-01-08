@@ -3,13 +3,13 @@ requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "consensus"
+name = "consensys"
 version = "0.1.0"
 description = "Multi-agent code review with AI debate"
 readme = "README.md"
 license = {text = "MIT"}
 authors = [
-    {name = "Consensus Team", email = "consensus@example.com"}
+    {name = "Consensys Team", email = "consensys@example.com"}
 ]
 requires-python = ">=3.9"
 classifiers = [
@@ -49,17 +49,17 @@ web = [
 ]
 
 [project.scripts]
-consensus = "src.cli:main"
+consensys = "src.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/consensus-ai/consensus"
-Documentation = "https://github.com/consensus-ai/consensus#readme"
-Repository = "https://github.com/consensus-ai/consensus"
-Issues = "https://github.com/consensus-ai/consensus/issues"
+Homepage = "https://github.com/noah-ing/consensys"
+Documentation = "https://github.com/noah-ing/consensys#readme"
+Repository = "https://github.com/noah-ing/consensys"
+Issues = "https://github.com/noah-ing/consensys/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "consensus*"]
+include = ["src*", "consensys*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.yaml", "*.json"]

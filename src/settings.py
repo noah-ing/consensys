@@ -1,4 +1,4 @@
-"""Configuration file support for Consensus.
+"""Configuration file support for Consensys.
 
 Supports loading configuration from multiple sources with precedence:
 1. CLI flags (highest priority)
@@ -33,8 +33,8 @@ DEFAULT_TEAM = "full-review"
 
 
 @dataclass
-class ConsensusConfig:
-    """Configuration for Consensus code review.
+class ConsensysConfig:
+    """Configuration for Consensys code review.
 
     Attributes:
         default_team: Team preset name or list of persona names
@@ -196,7 +196,7 @@ def merge_configs(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, A
     return result
 
 
-def load_config() -> ConsensusConfig:
+def load_config() -> ConsensysConfig:
     """Load configuration from all sources.
 
     Precedence (highest to lowest):
@@ -205,7 +205,7 @@ def load_config() -> ConsensusConfig:
     3. Default values
 
     Returns:
-        ConsensusConfig with merged values
+        ConsensysConfig with merged values
     """
     config_data: Dict[str, Any] = {}
     source_files: List[str] = []
@@ -224,8 +224,8 @@ def load_config() -> ConsensusConfig:
         config_data = merge_configs(config_data, project_data)
         source_files.append(str(project_config_file))
 
-    # Build ConsensusConfig with defaults
-    return ConsensusConfig(
+    # Build ConsensysConfig with defaults
+    return ConsensysConfig(
         default_team=config_data.get("default_team"),
         min_severity=config_data.get("min_severity"),
         cache_ttl=config_data.get("cache_ttl", DEFAULT_CACHE_TTL),
@@ -236,7 +236,7 @@ def load_config() -> ConsensusConfig:
     )
 
 
-def save_user_config(config: ConsensusConfig) -> None:
+def save_user_config(config: ConsensysConfig) -> None:
     """Save configuration to user-level config file.
 
     Args:
@@ -263,7 +263,7 @@ def get_effective_config(
     cli_fail_on: Optional[str] = None,
     cli_quick: Optional[bool] = None,
     cli_no_cache: Optional[bool] = None,
-) -> ConsensusConfig:
+) -> ConsensysConfig:
     """Get effective configuration with CLI overrides.
 
     CLI flags take highest precedence over file-based config.
@@ -275,7 +275,7 @@ def get_effective_config(
         cli_no_cache: --no-cache CLI flag
 
     Returns:
-        ConsensusConfig with CLI overrides applied
+        ConsensysConfig with CLI overrides applied
     """
     config = load_config()
 
@@ -302,7 +302,7 @@ def create_example_config(path: Optional[Path] = None) -> str:
     Returns:
         Example configuration as YAML string
     """
-    example = """# Consensus Configuration
+    example = """# Consensys Configuration
 # Place this file in your project root as .consensus.yaml
 # Or in ~/.consensus/config.yaml for user-level defaults
 

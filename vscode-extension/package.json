@@ -1,9 +1,9 @@
 {
-  "name": "consensus-code-review",
-  "displayName": "Consensus Code Review",
+  "name": "consensys-code-review",
+  "displayName": "Consensys Code Review",
   "description": "Multi-agent AI code review with debate-style consensus building",
   "version": "0.1.0",
-  "publisher": "consensus",
+  "publisher": "consensys",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -20,7 +20,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/consensus/consensus"
+    "url": "https://github.com/noah-ing/consensys"
   },
   "icon": "images/icon.png",
   "activationEvents": [
@@ -31,22 +31,22 @@
     "commands": [
       {
         "command": "consensus.reviewFile",
-        "title": "Consensus: Review Current File",
+        "title": "Consensys: Review Current File",
         "icon": "$(shield)"
       },
       {
         "command": "consensus.reviewSelection",
-        "title": "Consensus: Review Selection",
+        "title": "Consensys: Review Selection",
         "icon": "$(selection)"
       },
       {
         "command": "consensus.clearDiagnostics",
-        "title": "Consensus: Clear Review Diagnostics",
+        "title": "Consensys: Clear Review Diagnostics",
         "icon": "$(clear-all)"
       },
       {
         "command": "consensus.showFixSuggestion",
-        "title": "Consensus: Show Fix Suggestion"
+        "title": "Consensys: Show Fix Suggestion"
       }
     ],
     "menus": {
@@ -97,12 +97,12 @@
       }
     ],
     "configuration": {
-      "title": "Consensus Code Review",
+      "title": "Consensys Code Review",
       "properties": {
         "consensus.apiEndpoint": {
           "type": "string",
           "default": "http://localhost:8000",
-          "description": "The URL of the Consensus web API server"
+          "description": "The URL of the Consensys web API server"
         },
         "consensus.autoReviewOnSave": {
           "type": "boolean",

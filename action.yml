@@ -1,19 +1,19 @@
-# Consensus AI Code Review - GitHub Action
+# Consensys AI Code Review - GitHub Action
 #
 # This action runs multi-agent AI code review on your pull requests.
 # Multiple AI experts (SecurityExpert, PerformanceEngineer, ArchitectureCritic,
 # PragmaticDev) review your code, debate, and reach consensus.
 #
 # Usage:
-#   - uses: consensus-review/consensus@v1
+#   - uses: noah-ing/consensys@v1
 #     with:
 #       api_key: ${{ secrets.ANTHROPIC_API_KEY }}
 #       fail_on: 'HIGH'
 #       min_severity: 'MEDIUM'
 
-name: 'Consensus AI Code Review'
+name: 'Consensys AI Code Review'
 description: 'Multi-agent AI code review with debate and voting'
-author: 'Consensus'
+author: 'Consensys'
 
 branding:
   icon: 'check-circle'
@@ -80,18 +80,18 @@ runs:
         python-version: '3.11'
         cache: 'pip'
 
-    - name: Install Consensus
+    - name: Install Consensys
       shell: bash
       run: |
         pip install --upgrade pip
         # Install from PyPI (when published)
-        # pip install consensus-review
+        # pip install consensys-review
 
         # For now, install from source if action is used locally
         if [ -f "${{ github.action_path }}/pyproject.toml" ]; then
           pip install -e "${{ github.action_path }}"
         else
-          pip install consensus-review
+          pip install consensys-review
         fi
 
     - name: Get changed files
@@ -117,7 +117,7 @@ runs:
           **.h
           **.cs
 
-    - name: Run Consensus Review
+    - name: Run Consensys Review
       id: review
       shell: bash
       working-directory: ${{ inputs.working_directory }}
@@ -142,7 +142,7 @@ runs:
         echo "Files to review: $FILES"
 
         # Create output directory
-        mkdir -p /tmp/consensus-review
+        mkdir -p /tmp/consensys-review
 
         # Build review command options
         QUICK_FLAG=""
@@ -161,9 +161,9 @@ runs:
           if [ -f "$file" ]; then
             echo "::group::Reviewing $file"
 
-            OUTPUT_FILE="/tmp/consensus-review/$(basename "$file" | tr '/' '_').txt"
+            OUTPUT_FILE="/tmp/consensys-review/$(basename "$file" | tr '/' '_').txt"
 
-            if consensus review "$file" \
+            if consensys review "$file" \
               $QUICK_FLAG \
               --fail-on "${{ inputs.fail_on }}" \
               --min-severity "${{ inputs.min_severity }}" \
@@ -208,7 +208,7 @@ runs:
         echo "EOF" >> $GITHUB_OUTPUT
 
         # Write to GitHub Step Summary
-        echo "## Consensus Code Review Results" >> $GITHUB_STEP_SUMMARY
+        echo "## Consensys Code Review Results" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "**Decision:** $OVERALL_DECISION" >> $GITHUB_STEP_SUMMARY
         echo "**Total Issues:** $TOTAL_ISSUES" >> $GITHUB_STEP_SUMMARY
@@ -236,7 +236,7 @@ runs:
             'ABSTAIN': ':warning:'
           };
 
-          const body = `## ${decisionEmoji[decision] || ':robot:'} Consensus Code Review
+          const body = `## ${decisionEmoji[decision] || ':robot:'} Consensys Code Review
 
           **Decision:** ${decision}
           **Issues Found:** ${issuesCount}
@@ -244,7 +244,7 @@ runs:
           ${summary}
 
           ---
-          <sub>Reviewed by [Consensus](https://github.com/consensus-review/consensus) - Multi-agent AI code review with debate and voting</sub>
+          <sub>Reviewed by [Consensys](https://github.com/noah-ing/consensys) - Multi-agent AI code review with debate and voting</sub>
           `;
 
           // Find existing comment
@@ -255,7 +255,7 @@ runs:
           });
 
           const existingComment = comments.find(c =>
-            c.body.includes('Consensus Code Review') &&
+            c.body.includes('Consensys Code Review') &&
             (c.user.login === 'github-actions[bot]' || c.user.type === 'Bot')
           );
 

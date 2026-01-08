@@ -1,12 +1,12 @@
-# Consensus AI Code Review - GitHub Action Workflow
+# Consensys AI Code Review - GitHub Action Workflow
 #
-# This workflow runs Consensus multi-agent code review on pull requests.
+# This workflow runs Consensys multi-agent code review on pull requests.
 # It reviews changed files and can post a summary comment to the PR.
 #
 # Usage: Copy this file to your repository's .github/workflows/ directory
 # and set the ANTHROPIC_API_KEY secret in your repository settings.
 
-name: Consensus Code Review
+name: Consensys Code Review
 
 on:
   pull_request:
@@ -26,7 +26,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  consensus-review:
+  consensys-review:
     name: AI Code Review
     runs-on: ubuntu-latest
     permissions:
@@ -45,10 +45,10 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
 
-      - name: Install Consensus
+      - name: Install Consensys
         run: |
           pip install --upgrade pip
-          pip install consensus-review
+          pip install consensys-review
           # Alternative: Install from local if using as composite action
           # pip install -e .
 
@@ -69,7 +69,7 @@ jobs:
             **.swift
             **.kt
 
-      - name: Run Consensus Review
+      - name: Run Consensys Review
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -89,7 +89,7 @@ jobs:
               echo "Reviewing: $file"
 
               # Run quick review with fail-on threshold
-              if ! consensus review "$file" \
+              if ! consensys review "$file" \
                 --quick \
                 --fail-on "${{ inputs.fail_on || 'CRITICAL' }}" \
                 --min-severity "${{ inputs.min_severity || 'LOW' }}" \
@@ -103,7 +103,7 @@ jobs:
           done
 
           # Write summary for GitHub step summary
-          echo "## Consensus Code Review Results" >> $GITHUB_STEP_SUMMARY
+          echo "## Consensys Code Review Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo -e "$REVIEW_SUMMARY" >> $GITHUB_STEP_SUMMARY
 
@@ -124,7 +124,7 @@ jobs:
           script: |
             const summary = process.env.REVIEW_SUMMARY || 'No files reviewed';
 
-            // Look for existing Consensus comment to update
+            // Look for existing Consensys comment to update
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -133,15 +133,15 @@ jobs:
 
             const botComment = comments.find(comment =>
               comment.user.type === 'Bot' &&
-              comment.body.includes('Consensus Code Review')
+              comment.body.includes('Consensys Code Review')
             );
 
-            const body = `## Consensus Code Review
+            const body = `## Consensys Code Review
 
             ${summary}
 
             ---
-            *Automated review by [Consensus](https://github.com/consensus-review/consensus) - Multi-agent AI code review*
+            *Automated review by [Consensys](https://github.com/consensys-review/consensus) - Multi-agent AI code review*
             `;
 
             if (botComment) {
@@ -164,6 +164,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: consensus-reviews
+          name: consensys-reviews
           path: review-output/
           retention-days: 7
