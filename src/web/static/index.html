@@ -204,6 +204,188 @@
         .copy-btn.copied {
             color: #22c55e;
         }
+
+        /* Diff View Styles */
+        .diff-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            overflow-x: auto;
+        }
+
+        .diff-side {
+            overflow-x: auto;
+        }
+
+        .diff-header {
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .diff-header-removed {
+            background: #fef2f2;
+            color: #991b1b;
+            border-bottom: 1px solid #fecaca;
+        }
+
+        .diff-header-added {
+            background: #f0fdf4;
+            color: #166534;
+            border-bottom: 1px solid #bbf7d0;
+        }
+
+        .dark .diff-header-removed {
+            background: rgba(127, 29, 29, 0.3);
+            color: #fca5a5;
+            border-bottom: 1px solid rgba(248, 113, 113, 0.3);
+        }
+
+        .dark .diff-header-added {
+            background: rgba(22, 101, 52, 0.3);
+            color: #86efac;
+            border-bottom: 1px solid rgba(74, 222, 128, 0.3);
+        }
+
+        .diff-line {
+            display: flex;
+            min-height: 1.5rem;
+        }
+
+        .diff-line-number {
+            flex-shrink: 0;
+            width: 3rem;
+            padding: 0 0.5rem;
+            text-align: right;
+            color: #94a3b8;
+            background: #f8fafc;
+            border-right: 1px solid #e2e8f0;
+            user-select: none;
+        }
+
+        .dark .diff-line-number {
+            background: #1e293b;
+            border-right: 1px solid #334155;
+            color: #64748b;
+        }
+
+        .diff-line-content {
+            flex: 1;
+            padding: 0 0.75rem;
+            white-space: pre;
+            overflow-x: auto;
+        }
+
+        .diff-line-removed {
+            background: #fef2f2;
+        }
+
+        .diff-line-removed .diff-line-content {
+            color: #991b1b;
+        }
+
+        .dark .diff-line-removed {
+            background: rgba(127, 29, 29, 0.2);
+        }
+
+        .dark .diff-line-removed .diff-line-content {
+            color: #fca5a5;
+        }
+
+        .diff-line-added {
+            background: #f0fdf4;
+        }
+
+        .diff-line-added .diff-line-content {
+            color: #166534;
+        }
+
+        .dark .diff-line-added {
+            background: rgba(22, 101, 52, 0.2);
+        }
+
+        .dark .diff-line-added .diff-line-content {
+            color: #86efac;
+        }
+
+        .diff-line-unchanged {
+            background: #ffffff;
+        }
+
+        .dark .diff-line-unchanged {
+            background: #0f172a;
+        }
+
+        .diff-line-unchanged .diff-line-content {
+            color: #64748b;
+        }
+
+        .dark .diff-line-unchanged .diff-line-content {
+            color: #94a3b8;
+        }
+
+        .diff-line-empty {
+            background: #f1f5f9;
+        }
+
+        .dark .diff-line-empty {
+            background: #1e293b;
+        }
+
+        /* Mobile responsive diff */
+        @media (max-width: 768px) {
+            .diff-container {
+                grid-template-columns: 1fr;
+            }
+
+            .diff-side {
+                border-bottom: 2px solid #e2e8f0;
+            }
+
+            .dark .diff-side {
+                border-bottom: 2px solid #334155;
+            }
+
+            .diff-side:last-child {
+                border-bottom: none;
+            }
+
+            .diff-line-number {
+                width: 2.5rem;
+                font-size: 0.7rem;
+            }
+        }
+
+        /* Diff toggle button */
+        .diff-toggle-btn {
+            transition: all 0.2s ease;
+        }
+
+        .diff-toggle-btn.active {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .diff-view-wrapper {
+            display: none;
+        }
+
+        .diff-view-wrapper.visible {
+            display: block;
+        }
+
+        .code-view-wrapper {
+            display: block;
+        }
+
+        .code-view-wrapper.hidden {
+            display: none;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 transition-colors">
@@ -1154,6 +1336,7 @@ def example_function():
             const prismLang = getPrismLanguage(language);
             const lineInfo = issue.line ? `<span class="text-xs text-slate-400 ml-2">Line ${issue.line}</span>` : '';
             const agentBadge = issue.agent_name ? `<span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 ml-2">${formatAgentName(issue.agent_name)}</span>` : '';
+            const hasBothCodes = issue.original_code && issue.fix;
 
             return `
                 <div class="fix-card bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
@@ -1163,37 +1346,150 @@ def example_function():
                                 <p class="text-sm font-medium text-slate-800 dark:text-slate-200">${escapeHtml(issue.description)}</p>
                                 <div class="flex items-center mt-1">${lineInfo}${agentBadge}</div>
                             </div>
+                            ${hasBothCodes ? `
+                                <button onclick="toggleDiffView('${id}')" id="diff-toggle-${id}" class="diff-toggle-btn flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
+                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
+                                    </svg>
+                                    Diff View
+                                </button>
+                            ` : ''}
                         </div>
                     </div>
-                    ${issue.original_code ? `
-                        <div class="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-slate-200 dark:border-slate-700">
-                            <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs font-medium text-red-600 dark:text-red-400 flex items-center">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                    Original Code
-                                </span>
+
+                    <!-- Standard Code View -->
+                    <div id="code-view-${id}" class="code-view-wrapper">
+                        ${issue.original_code ? `
+                            <div class="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-slate-200 dark:border-slate-700">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-medium text-red-600 dark:text-red-400 flex items-center">
+                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                        Original Code
+                                    </span>
+                                </div>
+                                <pre class="!bg-transparent !p-0 !m-0"><code class="language-${prismLang} !bg-transparent">${escapeHtml(issue.original_code)}</code></pre>
                             </div>
-                            <pre class="!bg-transparent !p-0 !m-0"><code class="language-${prismLang} !bg-transparent">${escapeHtml(issue.original_code)}</code></pre>
+                        ` : ''}
+                        <div class="px-4 py-2 bg-green-50 dark:bg-green-900/20">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-medium text-green-600 dark:text-green-400 flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                    </svg>
+                                    Suggested Fix
+                                </span>
+                                <button onclick="copyFixToClipboard(this, '${id}')" class="copy-btn flex items-center text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                    Copy
+                                </button>
+                            </div>
+                            <pre class="!bg-transparent !p-0 !m-0"><code id="fix-code-${id}" class="language-${prismLang} !bg-transparent">${escapeHtml(issue.fix)}</code></pre>
+                        </div>
+                    </div>
+
+                    <!-- Diff View (hidden by default) -->
+                    ${hasBothCodes ? `
+                        <div id="diff-view-${id}" class="diff-view-wrapper border-t border-slate-200 dark:border-slate-700">
+                            ${createDiffView(issue.original_code, issue.fix, id)}
                         </div>
                     ` : ''}
-                    <div class="px-4 py-2 bg-green-50 dark:bg-green-900/20">
-                        <div class="flex items-center justify-between mb-2">
-                            <span class="text-xs font-medium text-green-600 dark:text-green-400 flex items-center">
-                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                </svg>
-                                Suggested Fix
-                            </span>
-                            <button onclick="copyFixToClipboard(this, '${id}')" class="copy-btn flex items-center text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                </svg>
-                                Copy
-                            </button>
+                </div>
+            `;
+        }
+
+        function toggleDiffView(id) {
+            const codeView = document.getElementById(`code-view-${id}`);
+            const diffView = document.getElementById(`diff-view-${id}`);
+            const toggleBtn = document.getElementById(`diff-toggle-${id}`);
+
+            if (diffView.classList.contains('visible')) {
+                diffView.classList.remove('visible');
+                codeView.classList.remove('hidden');
+                toggleBtn.classList.remove('active');
+            } else {
+                diffView.classList.add('visible');
+                codeView.classList.add('hidden');
+                toggleBtn.classList.add('active');
+            }
+        }
+
+        function createDiffView(originalCode, fixedCode, id) {
+            const originalLines = (originalCode || '').split('\n');
+            const fixedLines = (fixedCode || '').split('\n');
+            const maxLines = Math.max(originalLines.length, fixedLines.length);
+
+            let leftHtml = '';
+            let rightHtml = '';
+
+            for (let i = 0; i < maxLines; i++) {
+                const lineNum = i + 1;
+                const origLine = originalLines[i];
+                const fixLine = fixedLines[i];
+
+                // Left side (original/removed)
+                if (origLine !== undefined) {
+                    const lineClass = origLine !== fixLine ? 'diff-line-removed' : 'diff-line-unchanged';
+                    leftHtml += `
+                        <div class="diff-line ${lineClass}">
+                            <div class="diff-line-number">${lineNum}</div>
+                            <div class="diff-line-content">${escapeHtml(origLine) || ' '}</div>
                         </div>
-                        <pre class="!bg-transparent !p-0 !m-0"><code id="fix-code-${id}" class="language-${prismLang} !bg-transparent">${escapeHtml(issue.fix)}</code></pre>
+                    `;
+                } else {
+                    leftHtml += `
+                        <div class="diff-line diff-line-empty">
+                            <div class="diff-line-number"></div>
+                            <div class="diff-line-content"></div>
+                        </div>
+                    `;
+                }
+
+                // Right side (fixed/added)
+                if (fixLine !== undefined) {
+                    const lineClass = fixLine !== origLine ? 'diff-line-added' : 'diff-line-unchanged';
+                    rightHtml += `
+                        <div class="diff-line ${lineClass}">
+                            <div class="diff-line-number">${lineNum}</div>
+                            <div class="diff-line-content">${escapeHtml(fixLine) || ' '}</div>
+                        </div>
+                    `;
+                } else {
+                    rightHtml += `
+                        <div class="diff-line diff-line-empty">
+                            <div class="diff-line-number"></div>
+                            <div class="diff-line-content"></div>
+                        </div>
+                    `;
+                }
+            }
+
+            return `
+                <div class="diff-container">
+                    <div class="diff-side">
+                        <div class="diff-header diff-header-removed">
+                            <span class="flex items-center">
+                                <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
+                                </svg>
+                                Original
+                            </span>
+                        </div>
+                        <div class="diff-lines">${leftHtml}</div>
+                    </div>
+                    <div class="diff-side">
+                        <div class="diff-header diff-header-added">
+                            <span class="flex items-center">
+                                <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                                </svg>
+                                Fixed
+                            </span>
+                        </div>
+                        <div class="diff-lines">${rightHtml}</div>
                     </div>
                 </div>
             `;
