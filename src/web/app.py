@@ -163,11 +163,10 @@ async def review_code(request: ReviewRequest):
     if consensus:
         vote_counts = consensus.vote_counts
         consensus_dict = {
-            "decision": consensus.decision.value if hasattr(consensus.decision, 'value') else str(consensus.decision),
+            "decision": consensus.final_decision.value if hasattr(consensus.final_decision, 'value') else str(consensus.final_decision),
             "vote_counts": consensus.vote_counts,
             "key_issues": consensus.key_issues,
             "accepted_suggestions": consensus.accepted_suggestions,
-            "summary": consensus.summary,
         }
 
     decision = consensus_dict["decision"] if consensus_dict else "PENDING"
@@ -282,11 +281,10 @@ async def get_session(session_id: str) -> SessionDetail:
     consensus_dict = None
     if consensus:
         consensus_dict = {
-            "decision": consensus.decision.value if hasattr(consensus.decision, 'value') else str(consensus.decision),
+            "decision": consensus.final_decision.value if hasattr(consensus.final_decision, 'value') else str(consensus.final_decision),
             "vote_counts": consensus.vote_counts,
             "key_issues": consensus.key_issues,
             "accepted_suggestions": consensus.accepted_suggestions,
-            "summary": consensus.summary,
         }
 
     return SessionDetail(
@@ -459,11 +457,10 @@ async def websocket_review(websocket: WebSocket):
 
             # Send consensus
             consensus_data = {
-                "decision": consensus.decision.value if hasattr(consensus.decision, 'value') else str(consensus.decision),
+                "decision": consensus.final_decision.value if hasattr(consensus.final_decision, 'value') else str(consensus.final_decision),
                 "vote_counts": consensus.vote_counts,
                 "key_issues": consensus.key_issues,
                 "accepted_suggestions": consensus.accepted_suggestions,
-                "summary": consensus.summary,
             }
 
             await websocket.send_json({
