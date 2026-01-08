@@ -310,7 +310,7 @@ async function performReview(
                 {
                     code,
                     language,
-                    quick_mode: true
+                    quick: true  // API expects 'quick', not 'quick_mode'
                 },
                 {
                     timeout: 60000 // 60 second timeout
