@@ -42,7 +42,7 @@ from src.personas.teams import (
     get_team_personas,
 )
 from src.agents.personas import Persona
-from src.languages import detect_language, get_syntax_highlight_language
+from src.languages import detect_language, get_syntax_highlight_language, SUPPORTED_LANGUAGES, EXTENSION_MAP
 
 
 console = Console()
@@ -1693,15 +1693,22 @@ def should_ignore(file_path: Path, ignore_patterns: list, base_dir: Path) -> boo
     return False
 
 
-def collect_python_files(directory: Path, ignore_patterns: list) -> list:
-    """Collect all Python files in a directory, respecting ignore patterns.
+def collect_code_files(
+    directory: Path,
+    ignore_patterns: list,
+    language: Optional[str] = None,
+    extensions: Optional[list] = None,
+) -> list:
+    """Collect code files in a directory, respecting ignore patterns.
 
     Args:
         directory: The directory to search
         ignore_patterns: Patterns from .consensusignore
+        language: Optional language name to filter by (e.g., 'python', 'typescript')
+        extensions: Optional list of extensions to filter by (e.g., ['.py', '.js'])
 
     Returns:
-        List of Path objects for Python files
+        List of Path objects for code files
     """
     files = []
 
@@ -1721,9 +1728,27 @@ def collect_python_files(directory: Path, ignore_patterns: list) -> list:
     ]
     all_patterns = default_ignores + ignore_patterns
 
-    for file_path in directory.rglob("*.py"):
-        if not should_ignore(file_path, all_patterns, directory):
-            files.append(file_path)
+    # Determine which extensions to look for
+    if extensions:
+        # Custom extensions provided
+        target_extensions = set(ext if ext.startswith(".") else f".{ext}" for ext in extensions)
+    elif language:
+        # Specific language requested
+        lang_lower = language.lower()
+        if lang_lower not in SUPPORTED_LANGUAGES:
+            return []  # Unknown language
+        target_extensions = set(SUPPORTED_LANGUAGES[lang_lower].file_extensions)
+    else:
+        # Default: all supported languages
+        target_extensions = set(EXTENSION_MAP.keys())
+
+    # Collect files matching target extensions
+    for file_path in directory.rglob("*"):
+        if file_path.is_file():
+            ext = file_path.suffix.lower()
+            if ext in target_extensions:
+                if not should_ignore(file_path, all_patterns, directory):
+                    files.append(file_path)
 
     # Sort for consistent ordering
     files.sort()
@@ -1735,6 +1760,10 @@ def collect_python_files(directory: Path, ignore_patterns: list) -> list:
 @click.option("--parallel", "-p", default=4, help="Number of parallel workers (default: 4)")
 @click.option("--quick", "-q", is_flag=True, help="Use quick mode (Round 1 only) for each file")
 @click.option("--no-cache", is_flag=True, help="Force fresh reviews, skip cache")
+@click.option("--lang", "-l", type=click.Choice(list(SUPPORTED_LANGUAGES.keys())),
+              default=None, help="Filter by language (e.g., python, typescript, go)")
+@click.option("--extensions", "-e", default=None,
+              help="Comma-separated list of extensions to include (e.g., .py,.js,.ts)")
 @click.option("--min-severity", type=click.Choice(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
               default=None, help="Only display issues at or above this severity")
 @click.option("--fail-on", type=click.Choice(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
@@ -1742,15 +1771,22 @@ def collect_python_files(directory: Path, ignore_patterns: list) -> list:
 @click.option("--report", "-r", type=click.Path(), default=None,
               help="Generate combined markdown report at this path")
 def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
+                 lang: Optional[str], extensions: Optional[str],
                  min_severity: Optional[str], fail_on: Optional[str], report: Optional[str]):
-    """Review all Python files in a directory.
+    """Review code files in a directory (supports 14 languages).
 
-    Runs code reviews on all Python files in the specified directory,
+    Runs code reviews on code files in the specified directory,
     processing multiple files in parallel for efficiency.
+
+    Supported languages: python, javascript, typescript, go, rust, java,
+    cpp, c, ruby, php, csharp, swift, kotlin, scala
 
     \b
     Examples:
-        consensys review-batch src/
+        consensys review-batch src/                       # All supported languages
+        consensys review-batch src/ --lang python         # Python files only
+        consensys review-batch src/ --lang typescript     # TypeScript (.ts, .tsx)
+        consensys review-batch src/ -e .py,.js            # Custom extensions
         consensys review-batch . --parallel 8
         consensys review-batch src/ --quick --no-cache
         consensys review-batch src/ --fail-on HIGH
@@ -1784,11 +1820,20 @@ def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
 
     dir_path = Path(path)
 
+    # Parse extensions if provided
+    ext_list = None
+    if extensions:
+        ext_list = [e.strip() for e in extensions.split(",") if e.strip()]
+
     # Handle file vs directory
     if dir_path.is_file():
-        if not dir_path.suffix == ".py":
-            console.print("[red]Error: Single file must be a Python file (.py)[/red]")
-            console.print("[dim]Use 'consensys review <file>' for single file review.[/dim]")
+        # For single file, check if extension is supported
+        ext = dir_path.suffix.lower()
+        if ext not in EXTENSION_MAP and not (ext_list and ext in ext_list):
+            supported_exts = ", ".join(sorted(EXTENSION_MAP.keys()))
+            console.print(f"[red]Error: Unsupported file type '{ext}'[/red]")
+            console.print(f"[dim]Supported extensions: {supported_exts}[/dim]")
+            console.print("[dim]Use 'consensys review <file>' for single file review with any code.[/dim]")
             sys.exit(1)
         files = [dir_path]
         ignore_patterns = []
@@ -1796,11 +1841,20 @@ def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
         # Load ignore patterns
         ignore_patterns = load_consensusignore(dir_path)
 
-        # Collect Python files
-        files = collect_python_files(dir_path, ignore_patterns)
+        # Collect code files (multi-language support)
+        files = collect_code_files(dir_path, ignore_patterns, language=lang, extensions=ext_list)
+
+    # Build description of what we're looking for
+    if lang:
+        lang_info = SUPPORTED_LANGUAGES[lang]
+        file_desc = f"{lang_info.display_name} files ({', '.join(lang_info.file_extensions)})"
+    elif ext_list:
+        file_desc = f"files with extensions: {', '.join(ext_list)}"
+    else:
+        file_desc = "code files (all supported languages)"
 
     if not files:
-        console.print("[yellow]No Python files found to review.[/yellow]")
+        console.print(f"[yellow]No {file_desc} found to review.[/yellow]")
         if ignore_patterns:
             console.print(f"[dim]Note: {len(ignore_patterns)} ignore patterns loaded from .consensusignore[/dim]")
         return
@@ -1808,7 +1862,7 @@ def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
     console.print()
     console.print(Panel(
         f"[bold]Directory:[/bold] {dir_path.absolute()}\n"
-        f"[bold]Files:[/bold] {len(files)} Python files\n"
+        f"[bold]Files:[/bold] {len(files)} {file_desc}\n"
         f"[bold]Workers:[/bold] {parallel} parallel\n"
         f"[bold]Mode:[/bold] {'Quick (Round 1)' if quick else 'Full Debate'}",
         title="[bold cyan]Batch Review[/bold cyan]",
