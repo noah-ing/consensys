@@ -43,6 +43,24 @@ class ExploitResult:
     poc_warning: str = field(default="[PoC ONLY] This exploit is for demonstration and authorized security testing only. Do not use against systems without explicit permission.")
 
 
+@dataclass
+class PatchResult:
+    """Result of auto-patch generation for a vulnerability.
+
+    Attributes:
+        patched_code: The fixed code with vulnerability remediated
+        diff: Unified diff showing changes between original and patched code
+        explanation: Detailed explanation of the fix and why it works
+        verification_test: A test or command to verify the exploit no longer works
+        before_after: Comparison showing exploit works before but not after
+    """
+    patched_code: str
+    diff: str
+    explanation: str
+    verification_test: str
+    before_after: str = field(default="")
+
+
 # RedTeam persona definition
 RedTeamPersona = Persona(
     name="RedTeam",
@@ -282,6 +300,137 @@ This is for authorized penetration testing and security education only."""
             explanation=data.get("explanation", ""),
             success_indicators=data.get("success_indicators", []),
             poc_warning="[PoC ONLY] This exploit is for demonstration and authorized security testing only. Do not use against systems without explicit permission."
+        )
+
+    def _build_patch_prompt(self, vulnerability_type: str) -> str:
+        """Build the system prompt for patch generation.
+
+        Args:
+            vulnerability_type: The type of vulnerability to patch
+
+        Returns:
+            Complete system prompt string
+        """
+        patch_instructions = {
+            "sql_injection": """
+For SQL Injection fixes:
+- Use parameterized queries or prepared statements
+- Never concatenate user input directly into SQL
+- Use ORM methods where available
+- Validate and sanitize input as defense in depth""",
+
+            "xss": """
+For XSS (Cross-Site Scripting) fixes:
+- Escape HTML entities in output
+- Use Content-Security-Policy headers
+- Sanitize user input before storage and display
+- Use framework auto-escaping features""",
+
+            "command_injection": """
+For Command Injection fixes:
+- Use subprocess with list arguments (no shell=True)
+- Validate input against allowlist
+- Escape shell metacharacters if shell is required
+- Consider using language-native alternatives to shell commands""",
+
+            "path_traversal": """
+For Path Traversal fixes:
+- Use Path.resolve() and validate against base directory
+- Reject paths containing .. or absolute paths
+- Use os.path.basename for filenames only
+- Implement allowlist of permitted directories""",
+
+            "auth_bypass": """
+For Authentication Bypass fixes:
+- Use cryptographically secure session tokens
+- Implement proper session validation
+- Use constant-time comparison for secrets
+- Add rate limiting and account lockout"""
+        }
+
+        specific = patch_instructions.get(vulnerability_type, "")
+
+        return f"""You are a security engineer who specializes in fixing vulnerabilities.
+Your mission is to create secure patches that fix vulnerabilities without breaking functionality.
+
+When generating patches, you:
+- Preserve the original functionality while removing the security flaw
+- Follow secure coding best practices for the language
+- Provide clear explanations of why the fix works
+- Include verification tests to prove the vulnerability is fixed
+
+{specific}
+
+IMPORTANT: Respond ONLY with valid JSON in this exact format:
+{{
+    "patched_code": "The complete fixed code",
+    "diff": "Unified diff showing changes (use --- original and +++ patched)",
+    "explanation": "Detailed explanation of the fix",
+    "verification_test": "Python code or curl command to verify the fix works",
+    "before_after": "Description showing exploit works before but fails after"
+}}
+
+Generate production-ready secure code."""
+
+    def generate_patch(
+        self,
+        code: str,
+        exploit: ExploitResult,
+        context: Optional[str] = None
+    ) -> PatchResult:
+        """Generate a security patch for a vulnerability.
+
+        Creates a patched version of the code that fixes the vulnerability
+        demonstrated by the exploit, without breaking functionality.
+
+        Args:
+            code: The vulnerable code to patch
+            exploit: The ExploitResult showing the vulnerability
+            context: Optional context about the code
+
+        Returns:
+            PatchResult containing patched code, diff, and verification
+        """
+        system_prompt = self._build_patch_prompt(exploit.vulnerability_type)
+
+        user_message = f"""Fix this vulnerability in the code.
+
+VULNERABLE CODE:
+```
+{code}
+```
+
+VULNERABILITY TYPE: {exploit.vulnerability_type}
+
+EXPLOIT THAT WORKS:
+```
+{exploit.exploit_code}
+```
+
+PAYLOAD: {exploit.payload}
+
+HOW IT WORKS: {exploit.explanation}
+"""
+        if context:
+            user_message += f"\nCONTEXT: {context}"
+
+        user_message += """
+
+Generate a secure patch that:
+1. Fixes the vulnerability completely
+2. Preserves original functionality
+3. Follows security best practices
+4. Includes verification that the exploit no longer works"""
+
+        response = self._call_api(system_prompt, user_message)
+        data = self._parse_json_response(response)
+
+        return PatchResult(
+            patched_code=data.get("patched_code", ""),
+            diff=data.get("diff", ""),
+            explanation=data.get("explanation", ""),
+            verification_test=data.get("verification_test", ""),
+            before_after=data.get("before_after", ""),
         )
 
     def __repr__(self) -> str:

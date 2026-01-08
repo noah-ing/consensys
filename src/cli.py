@@ -185,7 +185,8 @@ def cli():
 @click.option("--fail-on", type=click.Choice(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
               default=None, help="Exit with code 1 if issues at or above this severity are found (for CI)")
 @click.option("--diff-only", is_flag=True, help="Only review changed lines vs HEAD (requires git repo)")
-def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool, min_severity: Optional[str], fail_on: Optional[str], diff_only: bool):
+@click.option("--redteam", is_flag=True, help="Enable RedTeam mode: generate exploits and auto-patches for vulnerabilities")
+def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool, min_severity: Optional[str], fail_on: Optional[str], diff_only: bool, redteam: bool):
     """Run a full debate review on code.
 
     Review a file:
@@ -216,6 +217,9 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
 
     Review only changed lines (smart diff mode):
         consensys review file.py --diff-only
+
+    RedTeam mode (generate exploits and patches):
+        consensys review file.py --redteam
     """
     # Get code from file or --code option
     diff_context_info: Optional[DiffContext] = None
@@ -363,6 +367,126 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
         console.print(
             f"[dim]Replay with: consensys replay {orchestrator.session_id}[/dim]"
         )
+
+        # RedTeam mode: generate exploits and patches for security issues
+        if redteam and consensus_result:
+            console.print()
+            console.print("[bold red]━━━ RedTeam Mode ━━━[/bold red]")
+            console.print("[dim]Generating exploits and patches for security vulnerabilities[/dim]")
+            console.print()
+
+            from src.agents.redteam import RedTeamAgent, VULNERABILITY_TYPES
+
+            # Collect security issues from reviews
+            security_issues = []
+            vuln_keywords = {
+                "sql": "sql_injection",
+                "injection": "sql_injection",
+                "xss": "xss",
+                "cross-site": "xss",
+                "script": "xss",
+                "command": "command_injection",
+                "shell": "command_injection",
+                "exec": "command_injection",
+                "path": "path_traversal",
+                "traversal": "path_traversal",
+                "directory": "path_traversal",
+                "auth": "auth_bypass",
+                "authentication": "auth_bypass",
+                "bypass": "auth_bypass",
+                "session": "auth_bypass",
+            }
+
+            for rev in orchestrator.reviews:
+                for issue in rev.issues:
+                    desc = issue.get("description", "").lower()
+                    for keyword, vuln_type in vuln_keywords.items():
+                        if keyword in desc:
+                            security_issues.append({
+                                "issue": issue,
+                                "vuln_type": vuln_type,
+                                "agent": rev.agent_name,
+                            })
+                            break
+
+            if not security_issues:
+                console.print("[yellow]No security vulnerabilities detected for RedTeam analysis.[/yellow]")
+                console.print("[dim]RedTeam mode works best when security issues are found.[/dim]")
+            else:
+                # Deduplicate by vulnerability type
+                seen_types = set()
+                unique_issues = []
+                for sec_issue in security_issues:
+                    if sec_issue["vuln_type"] not in seen_types:
+                        seen_types.add(sec_issue["vuln_type"])
+                        unique_issues.append(sec_issue)
+
+                console.print(f"[bold]Found {len(unique_issues)} unique vulnerability type(s):[/bold]")
+                for sec_issue in unique_issues:
+                    console.print(f"  [red]•[/red] {sec_issue['vuln_type']} (detected by {sec_issue['agent']})")
+                console.print()
+
+                redteam_agent = RedTeamAgent()
+
+                for sec_issue in unique_issues:
+                    vuln_type = sec_issue["vuln_type"]
+                    console.print(f"[bold red]▶ Analyzing: {vuln_type}[/bold red]")
+
+                    try:
+                        # Generate exploit
+                        with console.status(f"[red]Generating exploit for {vuln_type}...[/red]"):
+                            exploit = redteam_agent.generate_exploit(
+                                code=code_content,
+                                vulnerability=vuln_type,
+                                context=context
+                            )
+
+                        # Display exploit
+                        console.print(Panel(
+                            f"[bold]Payload:[/bold]\n{exploit.payload}\n\n"
+                            f"[bold]Exploit Code:[/bold]\n{exploit.exploit_code[:500]}{'...' if len(exploit.exploit_code) > 500 else ''}\n\n"
+                            f"[bold]Curl Command:[/bold]\n{exploit.curl_command}\n\n"
+                            f"[bold]How It Works:[/bold]\n{exploit.explanation[:300]}{'...' if len(exploit.explanation) > 300 else ''}\n\n"
+                            f"[dim]{exploit.poc_warning}[/dim]",
+                            title=f"[bold red]Exploit: {vuln_type}[/bold red]",
+                            border_style="red",
+                        ))
+
+                        # Generate patch
+                        with console.status(f"[green]Generating patch for {vuln_type}...[/green]"):
+                            patch = redteam_agent.generate_patch(
+                                code=code_content,
+                                exploit=exploit,
+                                context=context
+                            )
+
+                        # Display patch
+                        console.print(Panel(
+                            Syntax(patch.diff if patch.diff else patch.patched_code[:800], "diff", theme="monokai"),
+                            title=f"[bold green]Patch: {vuln_type}[/bold green]",
+                            border_style="green",
+                        ))
+
+                        console.print(f"[bold]Explanation:[/bold] {patch.explanation[:300]}{'...' if len(patch.explanation) > 300 else ''}")
+                        console.print()
+
+                        if patch.verification_test:
+                            console.print("[bold]Verification Test:[/bold]")
+                            console.print(Panel(
+                                patch.verification_test,
+                                title="[dim]Test Command[/dim]",
+                                border_style="dim",
+                            ))
+
+                        if patch.before_after:
+                            console.print()
+                            console.print(f"[bold]Before/After:[/bold] {patch.before_after}")
+
+                        console.print()
+
+                    except Exception as e:
+                        console.print(f"[red]Error analyzing {vuln_type}: {e}[/red]")
+                        continue
 
         # Auto-fix if requested
         if fix and consensus_result:
