@@ -51,8 +51,8 @@ consensys review myfile.py --fix
 # From PyPI
 pip install consensys
 
-# With web UI support
-pip install consensys[web]
+# With web UI support (note: quotes required for zsh)
+pip install 'consensys[web]'
 
 # From source
 git clone https://github.com/noah-ing/consensys.git
