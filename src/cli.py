@@ -23,6 +23,21 @@ from src.git.helpers import (
     get_current_branch,
 )
 from src.export.exporter import DebateExporter
+from src.personas.custom import (
+    load_custom_personas,
+    save_custom_persona,
+    get_all_personas,
+    get_persona_by_name,
+    delete_custom_persona,
+    list_all_persona_names,
+)
+from src.personas.teams import (
+    TEAM_PRESETS,
+    get_active_team,
+    set_active_team,
+    get_team_personas,
+)
+from src.agents.personas import Persona
 
 
 console = Console()
@@ -90,9 +105,10 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str]):
 
     console.print()
 
-    # Run the full debate
+    # Run the full debate (use team-configured personas)
     try:
-        orchestrator = DebateOrchestrator()
+        team_personas = get_team_personas()
+        orchestrator = DebateOrchestrator(personas=team_personas)
         consensus = orchestrator.run_full_debate(code_content, context)
 
         # Print session ID for replay
@@ -429,7 +445,8 @@ def _review_file_changes(files, context_prefix: str = "") -> Optional[str]:
         console.print("[yellow]No changes found to review.[/yellow]")
         return None
 
-    orchestrator = DebateOrchestrator()
+    team_personas = get_team_personas()
+    orchestrator = DebateOrchestrator(personas=team_personas)
     session_id = None
 
     for i, file in enumerate(files, 1):
@@ -775,6 +792,268 @@ def stats():
     # Summary insights
     console.print("[dim]Run 'consensus history' to see individual sessions.[/dim]")
     console.print("[dim]Run 'consensus export <session_id> --format html' for detailed reports.[/dim]")
+
+
+@cli.command("add-persona")
+@click.option("--name", "-n", prompt="Persona name", help="Unique name for the persona (e.g., DatabaseExpert)")
+@click.option("--role", "-r", prompt="Role", help="Role title (e.g., Database Administrator)")
+@click.option("--style", "-s", prompt="Review style", help="How this persona communicates (e.g., 'methodical and data-driven')")
+def add_persona(name: str, role: str, style: str):
+    """Create a new custom reviewer persona interactively.
+
+    Custom personas are stored in ~/.consensus/personas.json and can
+    participate in code reviews alongside built-in experts.
+
+    \b
+    Example:
+        consensus add-persona
+        # Follow the interactive prompts
+
+        consensus add-persona --name DatabaseExpert --role "DBA" --style "data-driven"
+        # Still prompts for system_prompt and priorities
+    """
+    # Check if name already exists
+    existing = get_persona_by_name(name)
+    if existing:
+        console.print(f"[yellow]Warning: A persona named '{name}' already exists.[/yellow]")
+        if not click.confirm("Do you want to overwrite it?"):
+            console.print("[dim]Cancelled.[/dim]")
+            return
+
+    console.print()
+    console.print(Panel(
+        f"[bold]Creating new persona: {name}[/bold]\n\n"
+        f"[dim]Fill in the following details to create your custom reviewer.[/dim]",
+        title="[bold cyan]New Persona[/bold cyan]",
+        border_style="cyan",
+    ))
+    console.print()
+
+    # Get system prompt (multi-line)
+    console.print("[bold]System Prompt[/bold]")
+    console.print("[dim]Describe this persona's expertise, focus areas, and review approach.")
+    console.print("This will be used as the AI's system prompt. Enter a blank line to finish.[/dim]")
+    console.print()
+
+    system_lines = []
+    while True:
+        line = click.prompt("", default="", show_default=False)
+        if line == "":
+            if system_lines:
+                break
+            console.print("[yellow]Please enter at least one line.[/yellow]")
+            continue
+        system_lines.append(line)
+
+    system_prompt = "\n".join(system_lines)
+
+    # Get priorities
+    console.print()
+    console.print("[bold]Priorities[/bold]")
+    console.print("[dim]Enter 3-5 focus areas, one per line. Enter a blank line to finish.[/dim]")
+    console.print()
+
+    priorities = []
+    while True:
+        priority = click.prompt(f"Priority {len(priorities) + 1}", default="", show_default=False)
+        if priority == "":
+            if len(priorities) >= 1:
+                break
+            console.print("[yellow]Please enter at least one priority.[/yellow]")
+            continue
+        priorities.append(priority)
+        if len(priorities) >= 5:
+            console.print("[dim]Maximum 5 priorities reached.[/dim]")
+            break
+
+    # Create and save the persona
+    persona = Persona(
+        name=name,
+        role=role,
+        system_prompt=system_prompt,
+        priorities=priorities,
+        review_style=style,
+    )
+
+    save_custom_persona(persona)
+
+    console.print()
+    console.print(Panel(
+        f"[bold]Name:[/bold] {persona.name}\n"
+        f"[bold]Role:[/bold] {persona.role}\n"
+        f"[bold]Style:[/bold] {persona.review_style}\n"
+        f"[bold]Priorities:[/bold] {', '.join(persona.priorities)}",
+        title=f"[bold green]Persona Created: {name}[/bold green]",
+        border_style="green",
+    ))
+    console.print()
+    console.print("[dim]Use 'consensus set-team' to add this persona to your review team.[/dim]")
+
+
+@cli.command("set-team")
+@click.argument("personas", nargs=-1)
+@click.option("--preset", "-p", type=click.Choice(list(TEAM_PRESETS.keys())), help="Use a preset team")
+def set_team(personas: tuple, preset: Optional[str]):
+    """Set the active review team.
+
+    Select which personas participate in code reviews. You can use
+    a preset team or specify individual personas.
+
+    \b
+    Examples:
+        consensus set-team --preset security-focused
+        consensus set-team SecurityExpert PragmaticDev
+        consensus set-team Security Performance  # Partial name matching
+    """
+    if preset:
+        # Use preset team
+        set_active_team(team_name=preset)
+        preset_info = TEAM_PRESETS[preset]
+
+        console.print()
+        console.print(Panel(
+            f"[bold]Preset:[/bold] {preset}\n"
+            f"[bold]Description:[/bold] {preset_info['description']}\n"
+            f"[bold]Personas:[/bold] {', '.join(preset_info['personas'])}",
+            title="[bold green]Team Set[/bold green]",
+            border_style="green",
+        ))
+        return
+
+    if not personas:
+        console.print("[yellow]Specify personas or use --preset.[/yellow]")
+        console.print()
+        console.print("Available personas:")
+        for name in list_all_persona_names():
+            console.print(f"  - {name}")
+        console.print()
+        console.print("Presets:")
+        for name, info in TEAM_PRESETS.items():
+            console.print(f"  - {name}: {info['description']}")
+        return
+
+    # Match persona names (partial matching)
+    all_names = list_all_persona_names()
+    matched_personas = []
+    not_found = []
+
+    for search in personas:
+        search_lower = search.lower()
+        # Try exact match first
+        found = None
+        for name in all_names:
+            if name.lower() == search_lower:
+                found = name
+                break
+        # Try partial match
+        if not found:
+            for name in all_names:
+                if search_lower in name.lower():
+                    found = name
+                    break
+        if found:
+            if found not in matched_personas:
+                matched_personas.append(found)
+        else:
+            not_found.append(search)
+
+    if not_found:
+        console.print(f"[yellow]Personas not found: {', '.join(not_found)}[/yellow]")
+        console.print("[dim]Available: " + ", ".join(all_names) + "[/dim]")
+        if not matched_personas:
+            return
+
+    if matched_personas:
+        set_active_team(custom_personas=matched_personas)
+
+        console.print()
+        console.print(Panel(
+            f"[bold]Active Team:[/bold] {', '.join(matched_personas)}",
+            title="[bold green]Team Set[/bold green]",
+            border_style="green",
+        ))
+
+
+@cli.command("teams")
+def teams():
+    """List available team presets and current team.
+
+    Shows all preset teams and custom personas available for
+    code reviews.
+    """
+    console.print()
+    console.print(Panel(
+        "[bold cyan]Team Configuration[/bold cyan]",
+        border_style="cyan",
+    ))
+    console.print()
+
+    # Current team
+    current_team = get_active_team()
+    current_personas = get_team_personas()
+    current_names = [p.name for p in current_personas]
+
+    console.print("[bold]Current Team:[/bold]")
+    if current_team:
+        console.print(f"  Preset: [green]{current_team}[/green]")
+    console.print(f"  Personas: [cyan]{', '.join(current_names)}[/cyan]")
+    console.print()
+
+    # Preset teams
+    preset_table = Table(title="Team Presets", show_header=True, header_style="bold blue")
+    preset_table.add_column("Name", style="cyan")
+    preset_table.add_column("Description")
+    preset_table.add_column("Personas", max_width=40)
+
+    for name, info in TEAM_PRESETS.items():
+        marker = " [green](active)[/green]" if name == current_team else ""
+        preset_table.add_row(
+            name + marker,
+            info["description"],
+            ", ".join(info["personas"]),
+        )
+
+    console.print(preset_table)
+    console.print()
+
+    # Built-in personas
+    from src.agents.personas import PERSONAS
+    builtin_table = Table(title="Built-in Personas", show_header=True, header_style="bold blue")
+    builtin_table.add_column("Name", style="cyan")
+    builtin_table.add_column("Role")
+    builtin_table.add_column("Style", max_width=40)
+
+    for persona in PERSONAS:
+        builtin_table.add_row(
+            persona.name,
+            persona.role,
+            persona.review_style,
+        )
+
+    console.print(builtin_table)
+    console.print()
+
+    # Custom personas
+    custom_personas = load_custom_personas()
+    if custom_personas:
+        custom_table = Table(title="Custom Personas", show_header=True, header_style="bold blue")
+        custom_table.add_column("Name", style="green")
+        custom_table.add_column("Role")
+        custom_table.add_column("Style", max_width=40)
+
+        for persona in custom_personas:
+            custom_table.add_row(
+                persona.name,
+                persona.role,
+                persona.review_style,
+            )
+
+        console.print(custom_table)
+        console.print()
+
+    console.print("[dim]Use 'consensus set-team --preset <name>' to select a preset.[/dim]")
+    console.print("[dim]Use 'consensus set-team <persona1> <persona2>' for custom selection.[/dim]")
+    console.print("[dim]Use 'consensus add-persona' to create a new persona.[/dim]")
 
 
 def main():
