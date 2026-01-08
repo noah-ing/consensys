@@ -1,0 +1,40 @@
+# Consensus - Multi-agent Code Review
+# Docker Compose configuration for easy local deployment
+#
+# Usage:
+#   docker-compose up -d          # Start in background
+#   docker-compose logs -f        # Follow logs
+#   docker-compose down           # Stop and remove containers
+#
+# Access the web UI at: http://localhost:8000
+
+version: "3.8"
+
+services:
+  consensus:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: consensus:latest
+    container_name: consensus-web
+    ports:
+      - "8000:8000"
+    environment:
+      # Required: Your Anthropic API key
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Optional: Data directory for SQLite database
+      - CONSENSUS_DATA_DIR=/app/data
+    volumes:
+      # Persist review history and cache
+      - consensus-data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  consensus-data:
+    driver: local
