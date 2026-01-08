@@ -1867,6 +1867,228 @@ def hook_status():
     console.print(table)
 
 
+@cli.group()
+def config():
+    """Manage Consensus configuration.
+
+    View and manage configuration settings from:
+    - Project-level: .consensus.yaml or .consensus.json in repo root
+    - User-level: ~/.consensus/config.yaml
+
+    CLI flags always override config file settings.
+    """
+    pass
+
+
+@config.command("show")
+def config_show():
+    """Display current configuration.
+
+    Shows the effective configuration with source files
+    and which values come from which config file.
+
+    \b
+    Examples:
+        consensus config show
+    """
+    from src.settings import (
+        load_config,
+        get_user_config_file,
+        find_project_config,
+        YAML_AVAILABLE,
+        DEFAULT_MODEL,
+        DEFAULT_CACHE_TTL,
+        DEFAULT_TEAM,
+    )
+
+    config = load_config()
+
+    console.print()
+    console.print(Panel(
+        "[bold cyan]Consensus Configuration[/bold cyan]",
+        border_style="cyan",
+    ))
+    console.print()
+
+    # Configuration sources
+    console.print("[bold]Configuration Sources:[/bold]")
+    if config.source_files:
+        for source in config.source_files:
+            console.print(f"  [green]✓[/green] {source}")
+    else:
+        console.print("  [dim]No config files found (using defaults)[/dim]")
+
+    # Check for potential config locations
+    user_config = get_user_config_file()
+    project_config = find_project_config()
+
+    if not user_config.exists():
+        console.print(f"  [dim]User config: {user_config} (not found)[/dim]")
+    if not project_config:
+        console.print("  [dim]Project config: .consensus.yaml (not found)[/dim]")
+
+    console.print()
+
+    # Current settings table
+    table = Table(title="Current Settings", show_header=True, header_style="bold blue")
+    table.add_column("Setting", style="cyan")
+    table.add_column("Value")
+    table.add_column("Source", style="dim")
+
+    def get_source(value, default):
+        """Determine if value is from config or default."""
+        if value is None or value == default:
+            return "default"
+        if config.source_files:
+            return "config file"
+        return "default"
+
+    # default_team
+    team_value = config.default_team if config.default_team else DEFAULT_TEAM
+    if isinstance(team_value, list):
+        team_display = ", ".join(team_value)
+    else:
+        team_display = str(team_value)
+    table.add_row(
+        "default_team",
+        team_display,
+        get_source(config.default_team, None),
+    )
+
+    # min_severity
+    table.add_row(
+        "min_severity",
+        config.min_severity or "[dim]not set[/dim]",
+        get_source(config.min_severity, None),
+    )
+
+    # cache_ttl
+    cache_display = f"{config.cache_ttl}s ({config.cache_ttl // 60}m)"
+    table.add_row(
+        "cache_ttl",
+        cache_display,
+        get_source(config.cache_ttl, DEFAULT_CACHE_TTL),
+    )
+
+    # model
+    table.add_row(
+        "model",
+        config.model,
+        get_source(config.model, DEFAULT_MODEL),
+    )
+
+    # fail_on
+    table.add_row(
+        "fail_on",
+        config.fail_on or "[dim]not set[/dim]",
+        get_source(config.fail_on, None),
+    )
+
+    # quick_mode
+    quick_display = "[green]enabled[/green]" if config.quick_mode else "[dim]disabled[/dim]"
+    table.add_row(
+        "quick_mode",
+        quick_display,
+        get_source(config.quick_mode, False),
+    )
+
+    console.print(table)
+    console.print()
+
+    # YAML availability
+    if YAML_AVAILABLE:
+        console.print("[dim]YAML support: [green]available[/green][/dim]")
+    else:
+        console.print("[dim]YAML support: [yellow]not available[/yellow] (install pyyaml)[/dim]")
+
+    console.print()
+    console.print("[dim]Create a config file with: consensus config init[/dim]")
+    console.print("[dim]Config files are YAML or JSON format.[/dim]")
+
+
+@config.command("init")
+@click.option("--project", "-p", is_flag=True, help="Create project-level config (.consensus.yaml)")
+@click.option("--user", "-u", is_flag=True, help="Create user-level config (~/.consensus/config.yaml)")
+def config_init(project: bool, user: bool):
+    """Initialize a configuration file with example values.
+
+    Creates an example configuration file that you can customize.
+
+    \b
+    Examples:
+        consensus config init --project   # Create .consensus.yaml
+        consensus config init --user      # Create ~/.consensus/config.yaml
+        consensus config init             # Interactive selection
+    """
+    from src.settings import create_example_config, get_user_config_file
+
+    if not project and not user:
+        # Interactive selection
+        console.print()
+        console.print("[bold]Where would you like to create the config file?[/bold]")
+        console.print()
+        console.print("  [cyan]1.[/cyan] Project-level (.consensus.yaml in current directory)")
+        console.print("  [cyan]2.[/cyan] User-level (~/.consensus/config.yaml)")
+        console.print()
+
+        choice = click.prompt("Choose option", type=click.Choice(["1", "2"]), default="1")
+        project = choice == "1"
+        user = choice == "2"
+
+    if project:
+        config_path = Path.cwd() / ".consensus.yaml"
+        if config_path.exists():
+            if not click.confirm(f"{config_path} already exists. Overwrite?"):
+                console.print("[dim]Cancelled.[/dim]")
+                return
+        create_example_config(config_path)
+        console.print(f"[green]Created project config: {config_path}[/green]")
+
+    if user:
+        config_path = get_user_config_file()
+        if config_path.exists():
+            if not click.confirm(f"{config_path} already exists. Overwrite?"):
+                console.print("[dim]Cancelled.[/dim]")
+                return
+        create_example_config(config_path)
+        console.print(f"[green]Created user config: {config_path}[/green]")
+
+    console.print()
+    console.print("[dim]Edit the config file to customize settings.[/dim]")
+    console.print("[dim]Run 'consensus config show' to verify.[/dim]")
+
+
+@config.command("path")
+def config_path():
+    """Show paths to configuration files.
+
+    Displays the paths where Consensus looks for configuration.
+    """
+    from src.settings import get_user_config_file, find_project_config
+
+    console.print()
+    console.print("[bold]Configuration File Paths:[/bold]")
+    console.print()
+
+    # User config
+    user_config = get_user_config_file()
+    user_exists = "[green]exists[/green]" if user_config.exists() else "[dim]not found[/dim]"
+    console.print(f"  [bold]User-level:[/bold]")
+    console.print(f"    {user_config} ({user_exists})")
+    console.print()
+
+    # Project config
+    project_config = find_project_config()
+    console.print(f"  [bold]Project-level:[/bold]")
+    if project_config:
+        console.print(f"    {project_config} [green]exists[/green]")
+    else:
+        console.print(f"    .consensus.yaml or .consensus.json in repo root ([dim]not found[/dim])")
+
+    console.print()
+    console.print("[dim]Precedence: CLI flags > project config > user config > defaults[/dim]")
+
+
 def main():
     """Entry point for the CLI."""
     cli()
