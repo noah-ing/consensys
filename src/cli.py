@@ -22,6 +22,7 @@ from src.git.helpers import (
     post_pr_comment,
     get_current_branch,
 )
+from src.export.exporter import DebateExporter
 
 
 console = Console()
@@ -631,6 +632,149 @@ def commit_review():
         console.print()
         console.print(f"[dim]Session ID: {session_id}[/dim]")
         console.print(f"[dim]Replay with: consensus replay {session_id}[/dim]")
+
+
+@cli.command()
+@click.argument("session_id")
+@click.option("--format", "-f", "output_format", type=click.Choice(["md", "html"]), default="md",
+              help="Export format: md (markdown) or html")
+@click.option("--output", "-o", "output_path", type=click.Path(), default=None,
+              help="Output file path (defaults to session_id.md or session_id.html)")
+def export(session_id: str, output_format: str, output_path: Optional[str]):
+    """Export a debate session to markdown or HTML.
+
+    \b
+    Examples:
+        consensus export abc123 --format md
+        consensus export abc123 --format html -o review.html
+    """
+    exporter = DebateExporter()
+
+    # Handle partial session ID matching
+    sessions = Storage().list_sessions(limit=100)
+    matching = [s for s in sessions if s["session_id"].startswith(session_id)]
+
+    if not matching:
+        console.print(f"[red]Session not found: {session_id}[/red]")
+        console.print("Run 'consensus history' to see available sessions.")
+        return
+
+    if len(matching) > 1:
+        console.print(f"[yellow]Multiple sessions match '{session_id}':[/yellow]")
+        for s in matching[:5]:
+            console.print(f"  {s['session_id']}")
+        console.print("Please provide a more specific session ID.")
+        return
+
+    full_session_id = matching[0]["session_id"]
+
+    # Determine output path
+    if output_path is None:
+        ext = "md" if output_format == "md" else "html"
+        output_path = f"consensus_review_{full_session_id[:12]}.{ext}"
+
+    output_file = Path(output_path)
+
+    console.print(f"[dim]Exporting session {full_session_id[:12]}...[/dim]")
+
+    if output_format == "md":
+        success = exporter.save_markdown(full_session_id, output_file)
+    else:
+        success = exporter.save_html(full_session_id, output_file)
+
+    if success:
+        console.print(f"[green]Exported to: {output_file}[/green]")
+    else:
+        console.print("[red]Failed to export session.[/red]")
+
+
+@cli.command()
+def stats():
+    """Show aggregate statistics across all review sessions.
+
+    Displays:
+    - Total sessions and completion rate
+    - Vote breakdown (APPROVE/REJECT/ABSTAIN)
+    - Agent agreement rates
+    - Most common issue types
+    """
+    storage = Storage()
+    stats_data = storage.get_stats()
+
+    if stats_data["total_sessions"] == 0:
+        console.print("[yellow]No review sessions found.[/yellow]")
+        console.print("Run 'consensus review <file>' to start reviewing code.")
+        return
+
+    console.print()
+    console.print(Panel(
+        "[bold cyan]Consensus Review Statistics[/bold cyan]",
+        border_style="cyan",
+    ))
+    console.print()
+
+    # Sessions table
+    sessions_table = Table(title="Session Statistics", show_header=True, header_style="bold blue")
+    sessions_table.add_column("Metric", style="dim")
+    sessions_table.add_column("Value", justify="right")
+
+    sessions_table.add_row("Total Sessions", str(stats_data["total_sessions"]))
+    sessions_table.add_row("Completed Sessions", str(stats_data["completed_sessions"]))
+
+    if stats_data["total_sessions"] > 0:
+        completion_rate = stats_data["completed_sessions"] / stats_data["total_sessions"] * 100
+        sessions_table.add_row("Completion Rate", f"{completion_rate:.1f}%")
+
+    console.print(sessions_table)
+    console.print()
+
+    # Vote breakdown table
+    if stats_data["vote_breakdown"]:
+        vote_table = Table(title="Vote Breakdown", show_header=True, header_style="bold blue")
+        vote_table.add_column("Decision", style="dim")
+        vote_table.add_column("Count", justify="right")
+        vote_table.add_column("Percentage", justify="right")
+
+        total_votes = sum(stats_data["vote_breakdown"].values())
+        vote_colors = {"APPROVE": "green", "REJECT": "red", "ABSTAIN": "yellow"}
+
+        for decision, count in sorted(stats_data["vote_breakdown"].items()):
+            color = vote_colors.get(decision, "white")
+            pct = count / total_votes * 100 if total_votes > 0 else 0
+            vote_table.add_row(
+                f"[{color}]{decision}[/{color}]",
+                str(count),
+                f"{pct:.1f}%"
+            )
+
+        console.print(vote_table)
+        console.print()
+
+    # Agreement breakdown table
+    if stats_data["agreement_breakdown"]:
+        agreement_table = Table(title="Agent Agreement Rates", show_header=True, header_style="bold blue")
+        agreement_table.add_column("Agreement Level", style="dim")
+        agreement_table.add_column("Count", justify="right")
+        agreement_table.add_column("Percentage", justify="right")
+
+        total_responses = sum(stats_data["agreement_breakdown"].values())
+        agreement_colors = {"AGREE": "green", "PARTIAL": "yellow", "DISAGREE": "red"}
+
+        for level, count in sorted(stats_data["agreement_breakdown"].items()):
+            color = agreement_colors.get(level, "white")
+            pct = count / total_responses * 100 if total_responses > 0 else 0
+            agreement_table.add_row(
+                f"[{color}]{level}[/{color}]",
+                str(count),
+                f"{pct:.1f}%"
+            )
+
+        console.print(agreement_table)
+        console.print()
+
+    # Summary insights
+    console.print("[dim]Run 'consensus history' to see individual sessions.[/dim]")
+    console.print("[dim]Run 'consensus export <session_id> --format html' for detailed reports.[/dim]")
 
 
 def main():
