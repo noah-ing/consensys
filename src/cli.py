@@ -22,6 +22,8 @@ from src.git.helpers import (
     get_pr_info,
     post_pr_comment,
     get_current_branch,
+    extract_diff_context,
+    DiffContext,
 )
 from src.export.exporter import DebateExporter
 from src.personas.custom import (
@@ -138,7 +140,8 @@ def cli():
               default=None, help="Only display issues at or above this severity")
 @click.option("--fail-on", type=click.Choice(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
               default=None, help="Exit with code 1 if issues at or above this severity are found (for CI)")
-def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool, min_severity: Optional[str], fail_on: Optional[str]):
+@click.option("--diff-only", is_flag=True, help="Only review changed lines vs HEAD (requires git repo)")
+def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool, min_severity: Optional[str], fail_on: Optional[str], diff_only: bool):
     """Run a full debate review on code.
 
     Review a file:
@@ -166,8 +169,13 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
     CI mode (exit 1 if issues found):
         consensus review file.py --fail-on CRITICAL
         consensus review file.py --fail-on HIGH
+
+    Review only changed lines (smart diff mode):
+        consensus review file.py --diff-only
     """
     # Get code from file or --code option
+    diff_context_info: Optional[DiffContext] = None
+
     if file:
         file_path = Path(file)
         try:
@@ -176,8 +184,50 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
             console.print(f"[red]Error reading file: {e}[/red]")
             sys.exit(1)
         context = context or f"File: {file_path.name}"
+
+        # Handle --diff-only mode
+        if diff_only:
+            if not is_git_repo():
+                console.print("[red]Error: --diff-only requires a git repository[/red]")
+                console.print("[dim]Initialize with: git init[/dim]")
+                sys.exit(1)
+
+            # Get the diff context for this file
+            repo_root = get_repo_root()
+            if repo_root:
+                # Convert to relative path from repo root
+                try:
+                    rel_path = file_path.resolve().relative_to(Path(repo_root).resolve())
+                except ValueError:
+                    rel_path = file_path
+
+                diff_context_info = extract_diff_context(str(rel_path), context_lines=5, path=repo_root)
+
+                if not diff_context_info:
+                    console.print(f"[yellow]No changes detected in {file_path.name} vs HEAD[/yellow]")
+                    console.print("[dim]The file has no uncommitted changes to review.[/dim]")
+                    console.print("[dim]Use without --diff-only to review the entire file.[/dim]")
+                    return
+
+                # Use the focused diff content instead of full file
+                code_content = diff_context_info.context_code
+                context = context or f"File: {file_path.name} (diff-only mode: reviewing changed lines)"
+
+                if diff_context_info.is_new_file:
+                    context += " [NEW FILE]"
+                elif diff_context_info.changed_line_ranges:
+                    ranges_str = ", ".join(
+                        f"L{start}-{end}" for start, end in diff_context_info.changed_line_ranges
+                    )
+                    context += f" [Changed: {ranges_str}]"
+            else:
+                console.print("[red]Error: Could not determine git repository root[/red]")
+                sys.exit(1)
+
     elif code:
         code_content = code
+        if diff_only:
+            console.print("[yellow]Warning: --diff-only is ignored for inline code snippets[/yellow]")
     else:
         console.print("[red]Error: Provide either a file path or --code option[/red]")
         console.print("Run 'consensus review --help' for usage.")
@@ -185,9 +235,21 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
 
     # Display what we're reviewing
     console.print()
+
+    # Show diff first if in diff-only mode
+    if diff_context_info:
+        console.print(Panel(
+            Syntax(diff_context_info.diff_text, "diff", theme="monokai"),
+            title="[bold magenta]Git Diff vs HEAD[/bold magenta]",
+            border_style="magenta",
+        ))
+        console.print()
+        console.print("[dim]Reviewing only the changed sections (token-efficient mode):[/dim]")
+        console.print()
+
     console.print(Panel(
         Syntax(code_content, "python", theme="monokai", line_numbers=True),
-        title="[bold cyan]Code Under Review[/bold cyan]",
+        title="[bold cyan]Code Under Review[/bold cyan]" + (" [diff-only]" if diff_context_info else ""),
         border_style="cyan",
     ))
 

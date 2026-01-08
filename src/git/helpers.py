@@ -2,7 +2,7 @@
 import subprocess
 import json
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, TYPE_CHECKING
 
 
 @dataclass
@@ -297,3 +297,156 @@ def get_current_branch(path: Optional[str] = None) -> Optional[str]:
     """Get the current git branch name."""
     success, output = run_git_command(["rev-parse", "--abbrev-ref", "HEAD"], cwd=path)
     return output if success else None
+
+
+def get_file_diff_vs_head(filepath: str, context_lines: int = 3, path: Optional[str] = None) -> Optional[str]:
+    """Get the diff of a specific file against HEAD.
+
+    Args:
+        filepath: Path to the file relative to repo root
+        context_lines: Number of context lines around changes (default 3)
+        path: Working directory for git command
+
+    Returns:
+        The diff output, or None if file is not modified or not in git
+    """
+    # First check if the file has any changes vs HEAD
+    success, output = run_git_command(
+        ["diff", f"--unified={context_lines}", "HEAD", "--", filepath],
+        cwd=path
+    )
+
+    if success and output.strip():
+        return output
+
+    # Also check if file is untracked but exists
+    success_status, status = run_git_command(["status", "--porcelain", "--", filepath], cwd=path)
+    if success_status and status.strip():
+        # File has some status (untracked, staged, etc.)
+        # For untracked files, return the entire file as "added"
+        if status.strip().startswith("??"):
+            try:
+                repo_root = get_repo_root(path)
+                full_path = f"{repo_root}/{filepath}" if repo_root else filepath
+                with open(full_path) as f:
+                    content = f.read()
+                # Format as diff-like output
+                lines = content.split("\n")
+                diff_lines = [f"diff --git a/{filepath} b/{filepath}"]
+                diff_lines.append("new file mode 100644")
+                diff_lines.append(f"--- /dev/null")
+                diff_lines.append(f"+++ b/{filepath}")
+                diff_lines.append(f"@@ -0,0 +1,{len(lines)} @@")
+                for line in lines:
+                    diff_lines.append(f"+{line}")
+                return "\n".join(diff_lines)
+            except Exception:
+                pass
+
+        # Try staged diff
+        success_staged, staged_diff = run_git_command(
+            ["diff", f"--unified={context_lines}", "--cached", "--", filepath],
+            cwd=path
+        )
+        if success_staged and staged_diff.strip():
+            return staged_diff
+
+    return None
+
+
+@dataclass
+class DiffContext:
+    """Context information for a file diff review."""
+    original_file: str       # Path to original file
+    diff_text: str           # The actual diff
+    changed_line_ranges: List[Tuple[int, int]]  # List of (start, end) line ranges that changed
+    context_code: str        # Code around the changes with context
+    is_new_file: bool        # True if this is a new untracked file
+
+
+def extract_diff_context(filepath: str, context_lines: int = 5, path: Optional[str] = None) -> Optional[DiffContext]:
+    """Extract diff and surrounding context for a file.
+
+    This function gets the diff for a file and extracts the changed regions
+    with additional context lines, creating a focused view for code review.
+
+    Args:
+        filepath: Path to the file
+        context_lines: Number of extra context lines around changes
+        path: Working directory for git command
+
+    Returns:
+        DiffContext with the diff and focused code, or None if no changes
+    """
+    import re
+
+    diff_text = get_file_diff_vs_head(filepath, context_lines=context_lines, path=path)
+    if not diff_text:
+        return None
+
+    # Parse the diff to find changed line ranges
+    changed_ranges: List[Tuple[int, int]] = []
+    is_new_file = "new file" in diff_text
+
+    # Parse @@ -old,count +new,count @@ lines to find changed regions
+    hunk_pattern = r"@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@"
+    for match in re.finditer(hunk_pattern, diff_text):
+        start_line = int(match.group(1))
+        count = int(match.group(2)) if match.group(2) else 1
+        # Extend range with context
+        range_start = max(1, start_line - context_lines)
+        range_end = start_line + count + context_lines
+        changed_ranges.append((range_start, range_end))
+
+    # Merge overlapping ranges
+    if changed_ranges:
+        changed_ranges.sort()
+        merged = [changed_ranges[0]]
+        for start, end in changed_ranges[1:]:
+            if start <= merged[-1][1] + 1:
+                merged[-1] = (merged[-1][0], max(merged[-1][1], end))
+            else:
+                merged.append((start, end))
+        changed_ranges = merged
+
+    # Read the full file and extract relevant sections
+    context_code = ""
+    try:
+        repo_root = get_repo_root(path)
+        full_path = f"{repo_root}/{filepath}" if repo_root else filepath
+        with open(full_path) as f:
+            lines = f.readlines()
+
+        if is_new_file:
+            # For new files, include everything
+            context_code = "".join(lines)
+        elif changed_ranges:
+            # Extract sections around changes
+            sections = []
+            for start, end in changed_ranges:
+                start_idx = max(0, start - 1)  # Convert to 0-indexed
+                end_idx = min(len(lines), end)
+                section_lines = lines[start_idx:end_idx]
+
+                # Add line numbers as comments for context
+                numbered_lines = []
+                for i, line in enumerate(section_lines, start=start_idx + 1):
+                    numbered_lines.append(f"{i:4d}: {line.rstrip()}")
+
+                sections.append("\n".join(numbered_lines))
+
+            context_code = "\n\n# ... (unchanged code) ...\n\n".join(sections)
+        else:
+            context_code = "".join(lines)
+
+    except Exception:
+        # Fall back to just using the diff
+        context_code = diff_text
+
+    return DiffContext(
+        original_file=filepath,
+        diff_text=diff_text,
+        changed_line_ranges=changed_ranges,
+        context_code=context_code,
+        is_new_file=is_new_file,
+    )
