@@ -1,0 +1,125 @@
+# Example Consensus Configuration File
+#
+# Copy this file to your project root as .consensus.yaml
+# Or copy to ~/.consensus/config.yaml for user-level defaults
+#
+# Precedence: CLI flags > project config > user config > defaults
+
+# Review team preset
+# Options: full-review, security-focused, performance-focused, quick-check
+# Or use custom list: ["SecurityExpert", "PragmaticDev"]
+default_team: full-review
+
+# Minimum severity to display in output
+# Options: LOW, MEDIUM, HIGH, CRITICAL
+min_severity: LOW
+
+# Severity threshold to fail CI checks
+# If any issue meets this threshold, exit code will be 1
+# Options: LOW, MEDIUM, HIGH, CRITICAL, or null to never fail
+fail_on: HIGH
+
+# Enable quick mode by default (Round 1 only, faster)
+quick_mode: false
+
+# Cache time-to-live in seconds (default: 3600 = 1 hour)
+# Set to 0 to disable caching
+cache_ttl: 3600
+
+# AI model to use for reviews
+# Options: claude-3-5-haiku-20241022 (fast), claude-3-5-sonnet-20241022 (better)
+model: claude-3-5-haiku-20241022
+
+# Language-specific settings (optional)
+# Overrides for specific file extensions
+languages:
+  python:
+    min_severity: MEDIUM
+    extra_hints:
+      - "Follow PEP 8 style guidelines"
+      - "Use type hints for function signatures"
+  javascript:
+    min_severity: LOW
+    extra_hints:
+      - "Prefer const over let where possible"
+      - "Use async/await over raw promises"
+  typescript:
+    min_severity: LOW
+    extra_hints:
+      - "Avoid 'any' type unless necessary"
+      - "Use strict null checks"
+
+# Ignore patterns (similar to .gitignore)
+# Files matching these patterns will be skipped
+ignore:
+  - "**/__pycache__/**"
+  - "**/node_modules/**"
+  - "**/.git/**"
+  - "**/venv/**"
+  - "**/.venv/**"
+  - "**/*.min.js"
+  - "**/*.min.css"
+  - "**/dist/**"
+  - "**/build/**"
+  - "**/coverage/**"
+  - "**/.pytest_cache/**"
+
+# Custom personas (in addition to built-in ones)
+# Define project-specific experts
+custom_personas:
+  DjangoExpert:
+    role: "Django Web Framework Specialist"
+    system_prompt: |
+      You are an expert in Django web development with deep knowledge of:
+      - Django ORM and database optimization
+      - Django security best practices
+      - Django REST Framework patterns
+      - Proper use of middleware and signals
+    priorities:
+      - Security vulnerabilities in views
+      - N+1 query problems
+      - Improper use of raw SQL
+      - Missing CSRF protection
+    review_style: "thorough"
+
+  ReactReviewer:
+    role: "React Frontend Specialist"
+    system_prompt: |
+      You are a React expert focusing on:
+      - Component architecture and composition
+      - Performance optimization (memoization, virtualization)
+      - State management patterns
+      - Hook best practices
+    priorities:
+      - Unnecessary re-renders
+      - Memory leaks from effects
+      - Prop drilling anti-patterns
+      - Accessibility issues
+    review_style: "constructive"
+
+# Output preferences
+output:
+  # Show code snippets in reviews
+  show_code: true
+  # Maximum issues to show per severity level
+  max_issues_per_severity: 5
+  # Show confidence scores
+  show_confidence: true
+  # Color output (disable for CI logs)
+  color: true
+
+# API settings
+api:
+  # Request timeout in seconds
+  timeout: 60
+  # Maximum retries on failure
+  max_retries: 3
+  # Base delay for exponential backoff (seconds)
+  retry_delay: 1.0
+
+# Budget alerts (optional)
+budget:
+  # Daily spending limit in USD
+  daily_limit: 10.0
+  # Alert when this percentage is reached
+  alert_threshold: 0.8  # 80%

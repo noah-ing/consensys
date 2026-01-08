@@ -725,6 +725,111 @@ Consensus provides language-specific review hints for:
 - Ruby, PHP
 - Swift, Kotlin, Scala
 
+## Examples
+
+The `examples/` directory contains sample files to help you get started:
+
+### Demo Files
+
+| File | Description |
+|------|-------------|
+| [`vulnerable.py`](examples/vulnerable.py) | Code with common security vulnerabilities (SQL injection, command injection, etc.) |
+| [`clean.py`](examples/clean.py) | Well-written, secure code demonstrating best practices |
+| [`review-demo.sh`](examples/review-demo.sh) | Shell script showcasing CLI usage patterns |
+| [`github-workflow.yml`](examples/github-workflow.yml) | Complete GitHub Actions workflow example |
+| [`.consensus.yaml`](examples/.consensus.yaml) | Example configuration file with all options |
+
+### Try the Demo
+
+```bash
+# Clone the repository
+git clone https://github.com/consensus-review/consensus.git
+cd consensus
+
+# Install
+pip install -e .
+export ANTHROPIC_API_KEY="your-api-key"
+
+# Review vulnerable code (will find issues)
+consensus review examples/vulnerable.py --quick
+
+# Review clean code (should pass)
+consensus review examples/clean.py --quick
+
+# Run the full demo script
+./examples/review-demo.sh
+```
+
+### Vulnerable Code Example
+
+The `vulnerable.py` file demonstrates 12 common security issues:
+
+1. **SQL Injection** - Direct string interpolation in queries
+2. **Command Injection** - User input in shell commands
+3. **Insecure Deserialization** - Pickle loading untrusted data
+4. **Hardcoded Secrets** - Credentials in source code
+5. **Path Traversal** - Unvalidated file paths
+6. **Weak Random** - Non-cryptographic random for tokens
+7. **Missing Validation** - No input sanitization
+8. **Eval Injection** - eval() on user input
+9. **XXE Vulnerability** - Unsafe XML parsing
+10. **Weak Cryptography** - MD5 without salt
+11. **Race Conditions** - TOCTOU in bank account
+12. **Sensitive Data Logging** - Card numbers in logs
+
+Run Consensus to see how the AI agents identify each issue:
+
+```bash
+consensus review examples/vulnerable.py
+```
+
+### Clean Code Example
+
+The `clean.py` file shows the secure alternatives:
+
+- Parameterized SQL queries
+- Subprocess with list arguments
+- JSON instead of pickle
+- Environment variables for secrets
+- Path validation with resolve()
+- secrets module for tokens
+- Input validation with dataclasses
+- Operator whitelist instead of eval
+- PBKDF2 password hashing
+- Thread-safe locking
+
+### Configuration Example
+
+Copy the example config to your project:
+
+```bash
+# Project-level config
+cp examples/.consensus.yaml .consensus.yaml
+
+# User-level config
+mkdir -p ~/.consensus
+cp examples/.consensus.yaml ~/.consensus/config.yaml
+```
+
+The config file includes:
+- Team presets and custom persona definitions
+- Severity thresholds and fail-on settings
+- Language-specific review hints
+- Ignore patterns for batch reviews
+- API settings (timeout, retries)
+- Budget alerts
+
+### GitHub Workflow Example
+
+Copy the workflow to enable PR reviews:
+
+```bash
+mkdir -p .github/workflows
+cp examples/github-workflow.yml .github/workflows/consensus.yml
+```
+
+Add `ANTHROPIC_API_KEY` to your repository secrets, and Consensus will automatically review pull requests.
+
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
