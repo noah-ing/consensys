@@ -129,95 +129,14 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
             team_personas = get_team_personas()
 
         if stream:
-            # Streaming mode: run agents sequentially with visible output
-            from src.agents.agent import Agent
-            from src.models.review import Review, Vote, Consensus, VoteDecision
-            from rich.live import Live
-            from rich.text import Text as RichText
-
-            storage = Storage()
-            session_id = storage.create_session(code_content, context)
-
+            # Parallel streaming mode: all 4 agents stream simultaneously in Live panels
             console.print()
-            console.print("[bold cyan]━━━ Streaming Mode ━━━[/bold cyan]")
-            console.print("[dim]Watching agents think in real-time...[/dim]")
+            console.print("[bold cyan]━━━ Parallel Streaming Mode ━━━[/bold cyan]")
+            console.print("[dim]Watch all 4 AI reviewers think simultaneously![/dim]")
             console.print()
 
-            all_reviews = []
-
-            for persona in team_personas:
-                agent = Agent(persona)
-
-                # Create a live display for this agent
-                console.print(f"[bold blue]┌─ {persona.name} is thinking...[/bold blue]")
-
-                current_text = []
-                def on_token(token):
-                    current_text.append(token)
-                    # Print token without newline
-                    console.print(token, end="", highlight=False)
-
-                try:
-                    result = agent.review_streaming(code_content, context, on_token)
-                    console.print()  # Newline after streaming
-
-                    # Convert to Review model
-                    review = Review(
-                        agent_name=result.agent_name,
-                        issues=result.issues,
-                        suggestions=result.suggestions,
-                        severity=result.severity,
-                        confidence=result.confidence,
-                        summary=result.summary,
-                        session_id=session_id
-                    )
-                    all_reviews.append(review)
-                    storage.save_review(review, session_id)
-
-                    # Show summary
-                    console.print(f"[bold blue]└─ {persona.name}:[/bold blue] [{'red' if result.severity == 'CRITICAL' else 'yellow'}]{result.severity}[/] - {len(result.issues)} issues, {len(result.suggestions)} suggestions")
-                    console.print()
-
-                except Exception as e:
-                    console.print(f"\n[red]Error from {persona.name}: {e}[/red]\n")
-
-            # Build simple consensus from reviews
-            all_issues = []
-            all_suggestions = set()
-            for r in all_reviews:
-                all_issues.extend(r.issues)
-                all_suggestions.update(r.suggestions)
-
-            # Determine decision based on severity
-            has_critical = any(r.severity == "CRITICAL" for r in all_reviews)
-            decision = VoteDecision.REJECT if has_critical else VoteDecision.APPROVE
-
-            consensus_result = Consensus(
-                final_decision=decision,
-                vote_counts={"APPROVE": 0 if has_critical else len(all_reviews), "REJECT": len(all_reviews) if has_critical else 0, "ABSTAIN": 0},
-                key_issues=[i.get("description", str(i)) for i in all_issues[:10]],
-                accepted_suggestions=list(all_suggestions)[:10],
-                session_id=session_id,
-                code_snippet=code_content,
-                context=context
-            )
-            storage.save_consensus(consensus_result)
-
-            # Display consensus
-            console.print(Panel(
-                f"[bold]Decision: [{'red' if decision == VoteDecision.REJECT else 'green'}]{decision.value}[/bold]\n\n"
-                f"[bold]Key Issues ({len(all_issues)}):[/bold]\n" +
-                "\n".join([f"  • {i.get('description', str(i))}" for i in all_issues[:5]]),
-                title="[bold]Streaming Consensus[/bold]",
-                border_style="cyan"
-            ))
-
-            # For auto-fix compatibility
-            class MockOrchestrator:
-                pass
-            orchestrator = MockOrchestrator()
-            orchestrator.session_id = session_id
-            orchestrator.reviews = all_reviews
+            orchestrator = DebateOrchestrator(personas=team_personas)
+            consensus_result = orchestrator.run_streaming_review(code_content, context)
 
         elif quick:
             # Quick mode: Round 1 only, no debate/voting (fast for hooks)

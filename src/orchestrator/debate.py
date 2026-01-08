@@ -1,13 +1,17 @@
 """Debate orchestrator for multi-agent code review discussions."""
 import uuid
+import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Callable
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 from rich.table import Table
 from rich.text import Text
+from rich.live import Live
+from rich.layout import Layout
+from rich.columns import Columns
 
 from src.agents.agent import Agent, ReviewResult, ResponseResult, VoteResult
 from src.agents.personas import PERSONAS, Persona
@@ -1036,6 +1040,157 @@ class DebateOrchestrator:
 
         # Build and return consensus
         return self.build_consensus()
+
+    def run_streaming_review(
+        self,
+        code: str,
+        context: Optional[str] = None
+    ) -> Consensus:
+        """Run a parallel streaming review with Rich Live 4-panel display.
+
+        All agents stream their reviews simultaneously in separate panels,
+        providing a real-time view of all AI reviewers thinking at once.
+
+        Args:
+            code: The code to review
+            context: Optional context about the code
+
+        Returns:
+            Consensus object with final decision and insights
+        """
+        # Create a new session
+        self.session_id = self.storage.create_session(code, context)
+        self.code = code
+        self.context = context
+        self.reviews = []
+
+        self.console.print()
+        self.console.rule("[bold blue]Parallel Streaming Review[/bold blue]")
+        self.console.print()
+        self.console.print("[dim]Watching all agents think simultaneously...[/dim]")
+        self.console.print()
+
+        # State for each agent's streaming output
+        agent_buffers: Dict[str, List[str]] = {}
+        agent_results: Dict[str, ReviewResult] = {}
+        agent_complete: Dict[str, bool] = {}
+        buffer_lock = threading.Lock()
+
+        # Initialize state for each agent
+        for agent in self.agents:
+            agent_buffers[agent.persona.name] = []
+            agent_complete[agent.persona.name] = False
+
+        def make_panels() -> Group:
+            """Create the 4-panel display from current buffers."""
+            panels = []
+            for agent in self.agents:
+                name = agent.persona.name
+                with buffer_lock:
+                    text = "".join(agent_buffers[name])
+                    is_done = agent_complete[name]
+
+                # Truncate to last 500 chars for display
+                display_text = text[-500:] if len(text) > 500 else text
+                if len(text) > 500:
+                    display_text = "..." + display_text
+
+                # Add status indicator
+                if is_done:
+                    status = "[green]✓ Complete[/green]"
+                    border_style = "green"
+                else:
+                    status = "[cyan]● Thinking...[/cyan]"
+                    border_style = "cyan"
+
+                panel = Panel(
+                    f"{display_text}\n\n{status}",
+                    title=f"[bold]{name}[/bold]",
+                    border_style=border_style,
+                    height=15,
+                )
+                panels.append(panel)
+
+            # Arrange in 2x2 grid
+            row1 = Columns(panels[:2], equal=True, expand=True)
+            row2 = Columns(panels[2:4] if len(panels) > 2 else [], equal=True, expand=True)
+            return Group(row1, row2)
+
+        def streaming_task(agent: Agent) -> Optional[ReviewResult]:
+            """Task to stream one agent's review."""
+            name = agent.persona.name
+
+            def on_token(token: str):
+                with buffer_lock:
+                    agent_buffers[name].append(token)
+
+            try:
+                result = agent.review_streaming(code, context, on_token)
+                with buffer_lock:
+                    agent_results[name] = result
+                    agent_complete[name] = True
+                return result
+            except Exception as e:
+                with buffer_lock:
+                    agent_buffers[name].append(f"\n[Error: {e}]")
+                    agent_complete[name] = True
+                return None
+
+        # Run all agents in parallel with Live display
+        with Live(make_panels(), console=self.console, refresh_per_second=8) as live:
+            with ThreadPoolExecutor(max_workers=len(self.agents)) as executor:
+                futures = {
+                    executor.submit(streaming_task, agent): agent
+                    for agent in self.agents
+                }
+
+                # Keep updating the display until all complete
+                while not all(agent_complete.values()):
+                    live.update(make_panels())
+                    import time
+                    time.sleep(0.1)
+
+                # Final update
+                live.update(make_panels())
+
+                # Collect results
+                for future in as_completed(futures):
+                    future.result()  # Ensure all futures complete
+
+        # Convert results to Review models and store
+        self.console.print()
+        self.console.print("[bold]Review Results:[/bold]")
+        self.console.print()
+
+        for agent in self.agents:
+            name = agent.persona.name
+            if name in agent_results:
+                result = agent_results[name]
+                review = Review(
+                    agent_name=result.agent_name,
+                    issues=result.issues,
+                    suggestions=result.suggestions,
+                    severity=result.severity,
+                    confidence=result.confidence,
+                    summary=result.summary,
+                    session_id=self.session_id,
+                )
+                self.storage.save_review(review, self.session_id)
+                self.reviews.append(review)
+
+                # Display summary
+                severity_colors = {"CRITICAL": "red", "HIGH": "red", "MEDIUM": "yellow", "LOW": "green"}
+                color = severity_colors.get(result.severity, "blue")
+                self.console.print(
+                    f"  [bold]{name}[/bold]: [{color}]{result.severity}[/{color}] - "
+                    f"{len(result.issues)} issues, {len(result.suggestions)} suggestions"
+                )
+
+        # Display review summary table
+        self._display_review_summary()
+
+        # Build quick consensus from reviews (streaming mode is for Round 1 only)
+        return self._build_quick_consensus()
 
     def __repr__(self) -> str:
         agent_names = [a.persona.name for a in self.agents]
