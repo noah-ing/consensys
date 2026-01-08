@@ -75,12 +75,25 @@ class Agent:
             "review": """
 When reviewing code, provide your analysis in the following JSON format:
 {
-    "issues": [{"description": "...", "severity": "CRITICAL|HIGH|MEDIUM|LOW", "line": null}],
+    "issues": [
+        {
+            "description": "Clear description of the issue",
+            "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+            "line": 10,
+            "original_code": "the problematic code snippet",
+            "fix": "the corrected code that fixes the issue"
+        }
+    ],
     "suggestions": ["suggestion 1", "suggestion 2"],
     "severity": "CRITICAL|HIGH|MEDIUM|LOW",
     "confidence": 0.0-1.0,
     "summary": "Brief overall assessment"
 }
+
+IMPORTANT: For every issue, you MUST provide:
+- line: The line number where the issue occurs (or null if not applicable)
+- original_code: The exact problematic code snippet from the input
+- fix: A concrete, copy-pasteable code fix that resolves the issue
 
 Be thorough but fair. Only report real issues, not style preferences unless they impact readability.""",
 

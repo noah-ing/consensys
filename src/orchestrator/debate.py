@@ -160,6 +160,16 @@ class DebateOrchestrator:
                 sev_color = severity_colors.get(sev, "blue")
                 line_info = f" (line {issue['line']})" if issue.get("line") else ""
                 content_lines.append(f"  [{sev_color}]\u2022[/{sev_color}] {desc}{line_info}")
+                # Show fix suggestion if available
+                fix = issue.get("fix")
+                if fix:
+                    fix_lines = fix.split('\n')
+                    if len(fix_lines) == 1:
+                        content_lines.append(f"    [green]Fix:[/green] [dim]{fix}[/dim]")
+                    else:
+                        content_lines.append(f"    [green]Fix:[/green]")
+                        for fix_line in fix_lines:
+                            content_lines.append(f"      [dim]{fix_line}[/dim]")
         else:
             content_lines.append("\n[green]\u2713 No issues found[/green]")
 

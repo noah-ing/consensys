@@ -972,7 +972,20 @@ def replay(session_id: str):
                     desc = issue.get("description", str(issue))
                     sev = issue.get("severity", "LOW")
                     sev_color = severity_colors.get(sev, "blue")
-                    content_lines.append(f"  [{sev_color}]\u2022[/{sev_color}] {desc}")
+                    line_num = issue.get("line")
+                    line_str = f" (line {line_num})" if line_num else ""
+                    content_lines.append(f"  [{sev_color}]\u2022[/{sev_color}] {desc}{line_str}")
+                    # Show fix suggestion if available
+                    fix = issue.get("fix")
+                    if fix:
+                        # Handle multiline fixes - indent each line
+                        fix_lines = fix.split('\n')
+                        if len(fix_lines) == 1:
+                            content_lines.append(f"    [green]Fix:[/green] [dim]{fix}[/dim]")
+                        else:
+                            content_lines.append(f"    [green]Fix:[/green]")
+                            for fix_line in fix_lines:
+                                content_lines.append(f"      [dim]{fix_line}[/dim]")
 
             if review.suggestions:
                 content_lines.append(f"\n[bold]Suggestions:[/bold]")

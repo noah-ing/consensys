@@ -30,10 +30,20 @@ class Severity(Enum):
 
 @dataclass
 class Issue:
-    """A specific issue found during code review."""
+    """A specific issue found during code review.
+
+    Attributes:
+        description: Description of the issue
+        severity: Severity level (CRITICAL, HIGH, MEDIUM, LOW)
+        line: Line number where the issue was found (if applicable)
+        fix: Suggested code fix for this issue
+        original_code: The problematic code snippet (if applicable)
+    """
     description: str
     severity: str = "LOW"  # CRITICAL, HIGH, MEDIUM, LOW
     line: Optional[int] = None
+    fix: Optional[str] = None
+    original_code: Optional[str] = None
 
 
 @dataclass
