@@ -386,6 +386,80 @@
         .code-view-wrapper.hidden {
             display: none;
         }
+
+        /* Export dropdown styling */
+        .export-dropdown {
+            position: relative;
+            display: inline-block;
+        }
+
+        .export-dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            top: 100%;
+            margin-top: 0.5rem;
+            background: white;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+            min-width: 200px;
+            z-index: 50;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+        }
+
+        .dark .export-dropdown-content {
+            background: #1e293b;
+            border-color: #334155;
+        }
+
+        .export-dropdown-content.show {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .export-dropdown-item {
+            display: flex;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            color: #475569;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .dark .export-dropdown-item {
+            color: #94a3b8;
+        }
+
+        .export-dropdown-item:hover {
+            background: #f1f5f9;
+        }
+
+        .dark .export-dropdown-item:hover {
+            background: #334155;
+        }
+
+        .export-dropdown-item svg {
+            width: 1.25rem;
+            height: 1.25rem;
+            margin-right: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .export-dropdown-item span {
+            font-size: 0.875rem;
+            font-weight: 500;
+        }
+
+        .export-dropdown-divider {
+            height: 1px;
+            background: #e2e8f0;
+            margin: 0.25rem 0;
+        }
+
+        .dark .export-dropdown-divider {
+            background: #334155;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 transition-colors">
@@ -558,6 +632,43 @@ def example_function():
                             Accepted Suggestions
                         </h3>
                         <ul id="suggestions-list" class="space-y-1.5 text-sm text-slate-600 dark:text-slate-400"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Export Options Panel -->
+            <div id="export-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <h2 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
+                        </svg>
+                        Export Results
+                    </h2>
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <!-- Markdown Export -->
+                        <button onclick="exportAsMarkdown()" class="flex items-center px-3 py-2 text-sm font-medium rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                            <span class="hidden sm:inline">Markdown</span>
+                            <span class="sm:hidden">MD</span>
+                        </button>
+                        <!-- JSON Export -->
+                        <button onclick="exportAsJSON()" class="flex items-center px-3 py-2 text-sm font-medium rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
+                            </svg>
+                            JSON
+                        </button>
+                        <!-- GitHub Issue Export -->
+                        <button onclick="exportAsGitHubIssue()" class="flex items-center px-3 py-2 text-sm font-medium rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
+                            <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd"></path>
+                            </svg>
+                            <span class="hidden sm:inline">GitHub Issue</span>
+                            <span class="sm:hidden">GH</span>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -764,6 +875,7 @@ def example_function():
         // State Management
         // ===================
         let ws = null;
+        let currentResultsData = null; // Store current results for export
         let isDark = localStorage.getItem('theme') === 'dark' ||
                      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
@@ -1059,6 +1171,9 @@ def example_function():
             responsesSection.classList.add('hidden');
             votesSection.classList.add('hidden');
             agentStatusGrid.innerHTML = '';
+            // Reset export panel and data
+            document.getElementById('export-panel').classList.add('hidden');
+            currentResultsData = null;
             // Reset fixes panel
             document.getElementById('fixes-panel').classList.add('hidden');
             ['critical', 'high', 'medium', 'low'].forEach(severity => {
@@ -1103,6 +1218,17 @@ def example_function():
         function displayResults(data) {
             statusSection.classList.add('hidden');
             resultsSection.classList.remove('hidden');
+
+            // Store data for export functions
+            currentResultsData = {
+                ...data,
+                code: data.code || codeInput.value,
+                language: languageSelect.value,
+                exportedAt: new Date().toISOString()
+            };
+
+            // Show export panel
+            document.getElementById('export-panel').classList.remove('hidden');
 
             // Reviews
             (data.reviews || []).forEach(r => addReviewPanel(r));
@@ -1765,6 +1891,280 @@ def example_function():
             toast.textContent = message;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
+        }
+
+        // ===================
+        // Export Functions
+        // ===================
+
+        function exportAsMarkdown() {
+            if (!currentResultsData) {
+                showToast('No review data to export', 'error');
+                return;
+            }
+
+            const data = currentResultsData;
+            const timestamp = new Date().toLocaleString();
+            let md = `# Consensys Code Review Report\n\n`;
+            md += `**Generated:** ${timestamp}\n\n`;
+
+            // Consensus/Verdict
+            if (data.consensus) {
+                md += `## Final Verdict: ${data.consensus.decision || 'PENDING'}\n\n`;
+                md += `| Vote | Count |\n|------|-------|\n`;
+                md += `| Approve | ${data.consensus.vote_counts?.APPROVE || 0} |\n`;
+                md += `| Reject | ${data.consensus.vote_counts?.REJECT || 0} |\n`;
+                md += `| Abstain | ${data.consensus.vote_counts?.ABSTAIN || 0} |\n\n`;
+
+                if (data.consensus.key_issues?.length) {
+                    md += `### Key Issues\n`;
+                    data.consensus.key_issues.forEach(issue => {
+                        md += `- ${issue}\n`;
+                    });
+                    md += '\n';
+                }
+
+                if (data.consensus.accepted_suggestions?.length) {
+                    md += `### Accepted Suggestions\n`;
+                    data.consensus.accepted_suggestions.forEach(s => {
+                        md += `- ${s}\n`;
+                    });
+                    md += '\n';
+                }
+            }
+
+            // Agent Reviews
+            if (data.reviews?.length) {
+                md += `## Agent Reviews\n\n`;
+                data.reviews.forEach(review => {
+                    md += `### ${formatAgentName(review.agent_name)}\n\n`;
+                    md += `**Severity:** ${review.severity || 'LOW'} | **Confidence:** ${Math.round((review.confidence || 0) * 100)}%\n\n`;
+
+                    if (review.issues?.length) {
+                        md += `**Issues:**\n`;
+                        review.issues.forEach(issue => {
+                            const issueObj = typeof issue === 'string' ? { description: issue } : issue;
+                            const lineInfo = issueObj.line ? ` (Line ${issueObj.line})` : '';
+                            const severity = issueObj.severity ? `[${issueObj.severity}] ` : '';
+                            md += `- ${severity}${issueObj.description}${lineInfo}\n`;
+
+                            if (issueObj.fix) {
+                                md += `  - **Fix:**\n\`\`\`${data.language || 'text'}\n${issueObj.fix}\n\`\`\`\n`;
+                            }
+                        });
+                        md += '\n';
+                    }
+
+                    if (review.suggestions?.length) {
+                        md += `**Suggestions:**\n`;
+                        review.suggestions.forEach(s => md += `- ${s}\n`);
+                        md += '\n';
+                    }
+
+                    if (review.summary) {
+                        md += `**Summary:** ${review.summary}\n\n`;
+                    }
+
+                    md += '---\n\n';
+                });
+            }
+
+            // Votes
+            if (data.votes?.length) {
+                md += `## Agent Votes\n\n`;
+                md += `| Agent | Vote | Reasoning |\n|-------|------|----------|\n`;
+                data.votes.forEach(vote => {
+                    const reasoning = vote.reasoning ? vote.reasoning.slice(0, 100) + (vote.reasoning.length > 100 ? '...' : '') : '-';
+                    md += `| ${formatAgentName(vote.agent_name)} | ${vote.decision} | ${reasoning} |\n`;
+                });
+                md += '\n';
+            }
+
+            // Code snippet
+            if (data.code) {
+                md += `## Reviewed Code\n\n`;
+                md += `\`\`\`${data.language || 'text'}\n${data.code}\n\`\`\`\n`;
+            }
+
+            downloadFile(md, 'consensys-review.md', 'text/markdown');
+            showToast('Exported as Markdown', 'success');
+        }
+
+        function exportAsJSON() {
+            if (!currentResultsData) {
+                showToast('No review data to export', 'error');
+                return;
+            }
+
+            // Create CI/CD-friendly JSON structure
+            const exportData = {
+                version: '1.0',
+                timestamp: new Date().toISOString(),
+                verdict: {
+                    decision: currentResultsData.consensus?.decision || 'PENDING',
+                    vote_counts: currentResultsData.consensus?.vote_counts || {},
+                    is_approved: currentResultsData.consensus?.decision === 'APPROVE',
+                    is_rejected: currentResultsData.consensus?.decision === 'REJECT'
+                },
+                summary: {
+                    total_issues: 0,
+                    critical_count: 0,
+                    high_count: 0,
+                    medium_count: 0,
+                    low_count: 0,
+                    total_fixes: 0
+                },
+                issues: [],
+                fixes: [],
+                reviews: currentResultsData.reviews || [],
+                votes: currentResultsData.votes || [],
+                responses: currentResultsData.responses || [],
+                code: currentResultsData.code || '',
+                language: currentResultsData.language || 'unknown',
+                session_id: currentResultsData.session_id || null
+            };
+
+            // Aggregate issues and fixes from reviews
+            (currentResultsData.reviews || []).forEach(review => {
+                if (!review.issues) return;
+                review.issues.forEach(issue => {
+                    const issueObj = typeof issue === 'string' ? { description: issue, severity: 'LOW' } : issue;
+                    const severity = (issueObj.severity || 'LOW').toUpperCase();
+
+                    exportData.issues.push({
+                        description: issueObj.description,
+                        severity: severity,
+                        line: issueObj.line || null,
+                        agent: review.agent_name,
+                        has_fix: !!issueObj.fix
+                    });
+
+                    exportData.summary.total_issues++;
+                    if (severity === 'CRITICAL') exportData.summary.critical_count++;
+                    else if (severity === 'HIGH') exportData.summary.high_count++;
+                    else if (severity === 'MEDIUM') exportData.summary.medium_count++;
+                    else exportData.summary.low_count++;
+
+                    if (issueObj.fix) {
+                        exportData.fixes.push({
+                            issue: issueObj.description,
+                            severity: severity,
+                            line: issueObj.line || null,
+                            original_code: issueObj.original_code || null,
+                            fixed_code: issueObj.fix,
+                            agent: review.agent_name
+                        });
+                        exportData.summary.total_fixes++;
+                    }
+                });
+            });
+
+            const json = JSON.stringify(exportData, null, 2);
+            downloadFile(json, 'consensys-review.json', 'application/json');
+            showToast('Exported as JSON', 'success');
+        }
+
+        function exportAsGitHubIssue() {
+            if (!currentResultsData) {
+                showToast('No review data to export', 'error');
+                return;
+            }
+
+            const data = currentResultsData;
+            const decision = data.consensus?.decision || 'PENDING';
+            const decisionEmoji = decision === 'APPROVE' ? '✅' : decision === 'REJECT' ? '❌' : '⚠️';
+
+            let body = `## ${decisionEmoji} Code Review: ${decision}\n\n`;
+            body += `> Automated review generated by Consensys multi-agent AI code review\n\n`;
+
+            // Vote summary
+            if (data.consensus) {
+                body += `### Vote Summary\n`;
+                body += `- ✅ Approve: **${data.consensus.vote_counts?.APPROVE || 0}**\n`;
+                body += `- ❌ Reject: **${data.consensus.vote_counts?.REJECT || 0}**\n`;
+                body += `- ⚪ Abstain: **${data.consensus.vote_counts?.ABSTAIN || 0}**\n\n`;
+            }
+
+            // Collect issues by severity
+            const issuesBySeverity = { CRITICAL: [], HIGH: [], MEDIUM: [], LOW: [] };
+            (data.reviews || []).forEach(review => {
+                if (!review.issues) return;
+                review.issues.forEach(issue => {
+                    const issueObj = typeof issue === 'string' ? { description: issue, severity: 'LOW' } : issue;
+                    const severity = (issueObj.severity || 'LOW').toUpperCase();
+                    if (issuesBySeverity[severity]) {
+                        issuesBySeverity[severity].push({
+                            ...issueObj,
+                            agent: review.agent_name
+                        });
+                    }
+                });
+            });
+
+            // Add issues section
+            const severityLabels = {
+                CRITICAL: '🔴 Critical',
+                HIGH: '🟠 High',
+                MEDIUM: '🟡 Medium',
+                LOW: '🟢 Low'
+            };
+
+            let hasIssues = false;
+            Object.entries(issuesBySeverity).forEach(([severity, issues]) => {
+                if (issues.length === 0) return;
+                hasIssues = true;
+
+                body += `### ${severityLabels[severity]} Issues (${issues.length})\n\n`;
+                issues.forEach((issue, idx) => {
+                    const lineInfo = issue.line ? ` (Line ${issue.line})` : '';
+                    body += `**${idx + 1}.** ${issue.description}${lineInfo}\n`;
+                    body += `   - *Reported by: ${formatAgentName(issue.agent)}*\n`;
+
+                    if (issue.fix) {
+                        body += `   - **Suggested Fix:**\n`;
+                        body += `   \`\`\`${data.language || ''}\n   ${issue.fix.split('\n').join('\n   ')}\n   \`\`\`\n`;
+                    }
+                    body += '\n';
+                });
+            });
+
+            if (!hasIssues) {
+                body += `### ✨ No Issues Found\n\nAll agents found the code to be acceptable.\n\n`;
+            }
+
+            // Key suggestions
+            if (data.consensus?.accepted_suggestions?.length) {
+                body += `### 💡 Accepted Suggestions\n\n`;
+                data.consensus.accepted_suggestions.forEach(s => {
+                    body += `- [ ] ${s}\n`;
+                });
+                body += '\n';
+            }
+
+            // Labels suggestion
+            body += `---\n\n`;
+            body += `**Suggested Labels:** `;
+            const labels = ['code-review', 'ai-generated'];
+            if (decision === 'REJECT') labels.push('needs-work');
+            if (issuesBySeverity.CRITICAL.length > 0) labels.push('critical');
+            if (issuesBySeverity.HIGH.length > 0) labels.push('high-priority');
+            body += labels.map(l => `\`${l}\``).join(', ');
+            body += '\n';
+
+            downloadFile(body, 'github-issue.md', 'text/markdown');
+            showToast('Exported as GitHub Issue', 'success');
+        }
+
+        function downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         // ===================
