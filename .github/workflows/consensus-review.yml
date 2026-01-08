@@ -48,7 +48,7 @@ jobs:
       - name: Install Consensys
         run: |
           pip install --upgrade pip
-          pip install consensys-review
+          pip install consensys
           # Alternative: Install from local if using as composite action
           # pip install -e .
 
@@ -141,7 +141,7 @@ jobs:
             ${summary}
 
             ---
-            *Automated review by [Consensys](https://github.com/consensys-review/consensus) - Multi-agent AI code review*
+            *Automated review by [Consensys](https://github.com/noah-ing/consensys) - Multi-agent AI code review*
             `;
 
             if (botComment) {
