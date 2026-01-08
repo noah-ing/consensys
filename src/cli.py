@@ -64,7 +64,11 @@ def cli():
 @click.argument("file", required=False, type=click.Path(exists=True))
 @click.option("--code", "-c", help="Review inline code snippet instead of a file")
 @click.option("--context", "-x", help="Additional context about the code")
-def review(file: Optional[str], code: Optional[str], context: Optional[str]):
+@click.option("--fix", "-f", is_flag=True, help="Auto-fix code based on consensus feedback")
+@click.option("--output", "-o", type=click.Path(), help="Write fixed code to file (with --fix)")
+@click.option("--stream", "-s", is_flag=True, help="Stream agent thinking in real-time")
+@click.option("--debate", "-d", is_flag=True, help="Use confrontational debate mode (agents argue more)")
+def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool):
     """Run a full debate review on code.
 
     Review a file:
@@ -75,6 +79,10 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str]):
 
     Add context:
         consensus review file.py --context 'This is a critical auth function'
+
+    Auto-fix code based on review:
+        consensus review file.py --fix
+        consensus review file.py --fix --output fixed.py
     """
     # Get code from file or --code option
     if file:
@@ -107,9 +115,110 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str]):
 
     # Run the full debate (use team-configured personas)
     try:
-        team_personas = get_team_personas()
-        orchestrator = DebateOrchestrator(personas=team_personas)
-        consensus = orchestrator.run_full_debate(code_content, context)
+        if debate:
+            # Use confrontational debate personas
+            from src.agents.personas import DEBATE_PERSONAS
+            team_personas = DEBATE_PERSONAS
+            console.print("[bold yellow]⚔️  Debate Mode: Agents will argue more aggressively[/bold yellow]")
+            console.print()
+        else:
+            team_personas = get_team_personas()
+
+        if stream:
+            # Streaming mode: run agents sequentially with visible output
+            from src.agents.agent import Agent
+            from src.models.review import Review, Vote, Consensus, VoteDecision
+            from rich.live import Live
+            from rich.text import Text as RichText
+
+            storage = Storage()
+            session_id = storage.create_session(code_content, context)
+
+            console.print()
+            console.print("[bold cyan]━━━ Streaming Mode ━━━[/bold cyan]")
+            console.print("[dim]Watching agents think in real-time...[/dim]")
+            console.print()
+
+            all_reviews = []
+
+            for persona in team_personas:
+                agent = Agent(persona)
+
+                # Create a live display for this agent
+                console.print(f"[bold blue]┌─ {persona.name} is thinking...[/bold blue]")
+
+                current_text = []
+                def on_token(token):
+                    current_text.append(token)
+                    # Print token without newline
+                    console.print(token, end="", highlight=False)
+
+                try:
+                    result = agent.review_streaming(code_content, context, on_token)
+                    console.print()  # Newline after streaming
+
+                    # Convert to Review model
+                    review = Review(
+                        agent_name=result.agent_name,
+                        issues=result.issues,
+                        suggestions=result.suggestions,
+                        severity=result.severity,
+                        confidence=result.confidence,
+                        summary=result.summary,
+                        session_id=session_id
+                    )
+                    all_reviews.append(review)
+                    storage.save_review(review, session_id)
+
+                    # Show summary
+                    console.print(f"[bold blue]└─ {persona.name}:[/bold blue] [{'red' if result.severity == 'CRITICAL' else 'yellow'}]{result.severity}[/] - {len(result.issues)} issues, {len(result.suggestions)} suggestions")
+                    console.print()
+
+                except Exception as e:
+                    console.print(f"\n[red]Error from {persona.name}: {e}[/red]\n")
+
+            # Build simple consensus from reviews
+            all_issues = []
+            all_suggestions = set()
+            for r in all_reviews:
+                all_issues.extend(r.issues)
+                all_suggestions.update(r.suggestions)
+
+            # Determine decision based on severity
+            has_critical = any(r.severity == "CRITICAL" for r in all_reviews)
+            decision = VoteDecision.REJECT if has_critical else VoteDecision.APPROVE
+
+            consensus_result = Consensus(
+                final_decision=decision,
+                vote_counts={"APPROVE": 0 if has_critical else len(all_reviews), "REJECT": len(all_reviews) if has_critical else 0, "ABSTAIN": 0},
+                key_issues=[i.get("description", str(i)) for i in all_issues[:10]],
+                accepted_suggestions=list(all_suggestions)[:10],
+                session_id=session_id,
+                code_snippet=code_content,
+                context=context
+            )
+            storage.save_consensus(consensus_result)
+
+            # Display consensus
+            console.print(Panel(
+                f"[bold]Decision: [{'red' if decision == VoteDecision.REJECT else 'green'}]{decision.value}[/bold]\n\n"
+                f"[bold]Key Issues ({len(all_issues)}):[/bold]\n" +
+                "\n".join([f"  • {i.get('description', str(i))}" for i in all_issues[:5]]),
+                title="[bold]Streaming Consensus[/bold]",
+                border_style="cyan"
+            ))
+
+            # For auto-fix compatibility
+            class MockOrchestrator:
+                pass
+            orchestrator = MockOrchestrator()
+            orchestrator.session_id = session_id
+            orchestrator.reviews = all_reviews
+
+        else:
+            # Standard parallel mode
+            orchestrator = DebateOrchestrator(personas=team_personas)
+            consensus_result = orchestrator.run_full_debate(code_content, context)
 
         # Print session ID for replay
         console.print()
@@ -119,6 +228,65 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str]):
         console.print(
             f"[dim]Replay with: consensus replay {orchestrator.session_id}[/dim]"
         )
+
+        # Auto-fix if requested
+        if fix and consensus_result:
+            console.print()
+            console.print("[bold cyan]━━━ Auto-Fix Mode ━━━[/bold cyan]")
+            console.print()
+
+            from src.agents.agent import CodeFixer
+
+            # Collect all issues and suggestions from reviews
+            all_issues = []
+            all_suggestions = set()
+            for review in orchestrator.reviews:
+                all_issues.extend(review.issues)
+                all_suggestions.update(review.suggestions)
+
+            # Add consensus suggestions
+            all_suggestions.update(consensus_result.accepted_suggestions)
+
+            if not all_issues and not all_suggestions:
+                console.print("[green]No issues found - code looks good![/green]")
+            else:
+                with console.status("[bold cyan]Generating fixed code...[/bold cyan]"):
+                    fixer = CodeFixer()
+                    fix_result = fixer.fix_code(
+                        code=code_content,
+                        issues=all_issues,
+                        suggestions=list(all_suggestions),
+                        context=context
+                    )
+
+                # Display the fixed code
+                console.print(Panel(
+                    Syntax(fix_result.fixed_code, "python", theme="monokai", line_numbers=True),
+                    title="[bold green]Fixed Code[/bold green]",
+                    border_style="green",
+                ))
+
+                # Display changes made
+                if fix_result.changes_made:
+                    console.print()
+                    console.print("[bold]Changes Made:[/bold]")
+                    for change in fix_result.changes_made:
+                        console.print(f"  [green]✓[/green] {change}")
+
+                # Display explanation
+                if fix_result.explanation:
+                    console.print()
+                    console.print(f"[dim]{fix_result.explanation}[/dim]")
+
+                # Write to file if output specified
+                if output:
+                    output_path = Path(output)
+                    output_path.write_text(fix_result.fixed_code)
+                    console.print()
+                    console.print(f"[green]Fixed code written to: {output_path}[/green]")
+                elif file:
+                    console.print()
+                    console.print(f"[dim]To overwrite original: consensus review {file} --fix --output {file}[/dim]")
 
     except Exception as e:
         console.print(f"[red]Error during review: {e}[/red]")
@@ -1054,6 +1222,82 @@ def teams():
     console.print("[dim]Use 'consensus set-team --preset <name>' to select a preset.[/dim]")
     console.print("[dim]Use 'consensus set-team <persona1> <persona2>' for custom selection.[/dim]")
     console.print("[dim]Use 'consensus add-persona' to create a new persona.[/dim]")
+
+
+@cli.command("install-hooks")
+@click.option("--git/--no-git", default=True, help="Install git pre-commit hook")
+@click.option("--claude/--no-claude", default=True, help="Install Claude Code hooks")
+def install_hooks(git: bool, claude: bool):
+    """Install consensus hooks for automatic code review.
+
+    Installs hooks that automatically run consensus review:
+
+    \b
+    Git pre-commit: Reviews staged Python files before commit
+    Claude Code: Reviews files after Write/Edit tool calls
+    """
+    from src.hooks.installer import install_hooks as do_install, get_hook_status
+
+    console.print("[bold cyan]Installing Consensus Hooks[/bold cyan]")
+    console.print()
+
+    results = do_install(git_hooks=git, claude_code_hooks=claude)
+
+    for hook_name, success in results.items():
+        if success:
+            console.print(f"  [green]✓[/green] {hook_name} installed")
+        else:
+            console.print(f"  [red]✗[/red] {hook_name} failed")
+
+    console.print()
+
+    # Show status
+    status = get_hook_status()
+    for hook_name, info in status.items():
+        if info["installed"]:
+            console.print(f"[dim]{hook_name}: {info['path']}[/dim]")
+
+
+@cli.command("uninstall-hooks")
+@click.option("--git/--no-git", default=True, help="Uninstall git pre-commit hook")
+@click.option("--claude/--no-claude", default=True, help="Uninstall Claude Code hooks")
+def uninstall_hooks(git: bool, claude: bool):
+    """Uninstall consensus hooks."""
+    from src.hooks.installer import uninstall_hooks as do_uninstall
+
+    console.print("[bold cyan]Uninstalling Consensus Hooks[/bold cyan]")
+    console.print()
+
+    results = do_uninstall(git_hooks=git, claude_code_hooks=claude)
+
+    for hook_name, success in results.items():
+        if success:
+            console.print(f"  [green]✓[/green] {hook_name} uninstalled")
+        else:
+            console.print(f"  [yellow]![/yellow] {hook_name} not found or failed")
+
+
+@cli.command("hook-status")
+def hook_status():
+    """Show status of installed hooks."""
+    from src.hooks.installer import get_hook_status
+
+    status = get_hook_status()
+
+    table = Table(title="Hook Status", show_header=True, header_style="bold cyan")
+    table.add_column("Hook", style="cyan")
+    table.add_column("Status")
+    table.add_column("Path", style="dim")
+
+    for hook_name, info in status.items():
+        status_str = "[green]Installed[/green]" if info["installed"] else "[dim]Not installed[/dim]"
+        table.add_row(
+            hook_name,
+            status_str,
+            info["path"] or "-"
+        )
+
+    console.print(table)
 
 
 def main():

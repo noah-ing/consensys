@@ -2,20 +2,13 @@
 import json
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List
-from enum import Enum
 
 from anthropic import Anthropic
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from src.config import ANTHROPIC_API_KEY, DEFAULT_MODEL, MAX_TOKENS
 from src.agents.personas import Persona
-
-
-class VoteDecision(Enum):
-    """Possible vote outcomes for code review."""
-    APPROVE = "APPROVE"
-    REJECT = "REJECT"
-    ABSTAIN = "ABSTAIN"
+from src.models.review import VoteDecision
 
 
 @dataclass
@@ -142,6 +135,71 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
         )
         return response.content[0].text
 
+    def _call_api_streaming(
+        self,
+        system_prompt: str,
+        user_message: str,
+        on_token: Optional[callable] = None
+    ) -> str:
+        """Make a streaming Claude API call.
+
+        Args:
+            system_prompt: The system prompt to use
+            user_message: The user message/query
+            on_token: Callback function called with each token
+
+        Returns:
+            The complete response text
+        """
+        full_response = []
+
+        with self.client.messages.stream(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}]
+        ) as stream:
+            for text in stream.text_stream:
+                full_response.append(text)
+                if on_token:
+                    on_token(text)
+
+        return "".join(full_response)
+
+    def review_streaming(
+        self,
+        code: str,
+        context: Optional[str] = None,
+        on_token: Optional[callable] = None
+    ) -> ReviewResult:
+        """Review code with streaming output.
+
+        Args:
+            code: The code to review
+            context: Optional context about the code
+            on_token: Callback for streaming tokens
+
+        Returns:
+            ReviewResult with issues, suggestions, and overall assessment
+        """
+        system_prompt = self._build_system_prompt("review")
+
+        user_message = f"Please review the following code:\n\n```\n{code}\n```"
+        if context:
+            user_message = f"Context: {context}\n\n{user_message}"
+
+        response = self._call_api_streaming(system_prompt, user_message, on_token)
+        data = self._parse_json_response(response)
+
+        return ReviewResult(
+            agent_name=self.persona.name,
+            issues=data.get("issues", []),
+            suggestions=data.get("suggestions", []),
+            severity=data.get("severity", "LOW"),
+            confidence=data.get("confidence", 0.8),
+            summary=data.get("summary", "")
+        )
+
     def _parse_json_response(self, response: str) -> Dict[str, Any]:
         """Parse JSON from API response, handling markdown code blocks.
 
@@ -162,6 +220,23 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
             if lines and lines[-1].strip() == "```":
                 lines = lines[:-1]
             text = "\n".join(lines)
+
+        # Fix control characters inside JSON strings
+        # Replace actual newlines/tabs inside strings with escaped versions
+        import re
+
+        def fix_control_chars(match):
+            """Escape control characters inside JSON string values."""
+            s = match.group(0)
+            s = s.replace('\n', '\\n')
+            s = s.replace('\r', '\\r')
+            s = s.replace('\t', '\\t')
+            # Remove other control characters
+            s = re.sub(r'[\x00-\x1f]', '', s)
+            return s
+
+        # Match JSON string values and fix control chars within them
+        text = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"', fix_control_chars, text)
 
         return json.loads(text)
 
@@ -288,3 +363,111 @@ Based on the code and the debate above, cast your vote. Consider all perspective
 
     def __repr__(self) -> str:
         return f"Agent(persona={self.persona.name})"
+
+
+@dataclass
+class FixResult:
+    """Result of code fix operation."""
+    original_code: str
+    fixed_code: str
+    changes_made: List[str]
+    explanation: str
+
+
+class CodeFixer:
+    """Fixes code based on consensus review feedback."""
+
+    def __init__(self):
+        self.client = Anthropic(api_key=ANTHROPIC_API_KEY)
+        self.model = DEFAULT_MODEL
+        self.max_tokens = 4096  # More tokens for code output
+
+    def fix_code(
+        self,
+        code: str,
+        issues: List[Dict[str, Any]],
+        suggestions: List[str],
+        context: Optional[str] = None
+    ) -> FixResult:
+        """Fix code based on review feedback.
+
+        Args:
+            code: The original code to fix
+            issues: List of issues found in review
+            suggestions: List of improvement suggestions
+            context: Optional context about the code
+
+        Returns:
+            FixResult with fixed code and explanation
+        """
+        system_prompt = """You are an expert code fixer. Rewrite code to fix all identified issues.
+
+RESPOND ONLY WITH VALID JSON. Use \\n for newlines in code. Example:
+{"fixed_code": "def foo():\\n    return bar", "changes_made": ["Fixed X"], "explanation": "Brief explanation"}
+
+Rules:
+1. Fix ALL identified issues
+2. Maintain original functionality
+3. Use best practices
+4. Use \\n for newlines in the fixed_code string"""
+
+        issues_text = "\n".join([
+            f"- {issue.get('description', str(issue))} (severity: {issue.get('severity', 'unknown')})"
+            for issue in issues
+        ])
+        suggestions_text = "\n".join([f"- {s}" for s in suggestions])
+
+        user_message = f"""Fix this code based on the review feedback:
+
+## Original Code
+```
+{code}
+```
+
+## Issues Found
+{issues_text}
+
+## Suggestions
+{suggestions_text}
+"""
+        if context:
+            user_message = f"Context: {context}\n\n{user_message}"
+
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=self.max_tokens,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_message}]
+        )
+
+        text = response.content[0].text.strip()
+
+        # Handle markdown code blocks
+        if text.startswith("```"):
+            lines = text.split("\n")
+            lines = lines[1:]
+            if lines and lines[-1].strip() == "```":
+                lines = lines[:-1]
+            text = "\n".join(lines)
+
+        # Fix control characters
+        import re
+        def fix_ctrl(m):
+            s = m.group(0)
+            s = s.replace('\n', '\\n').replace('\r', '\\r').replace('\t', '\\t')
+            s = re.sub(r'[\x00-\x1f]', '', s)
+            return s
+        text = re.sub(r'"[^"\\]*(?:\\.[^"\\]*)*"', fix_ctrl, text)
+
+        data = json.loads(text)
+
+        # Unescape the fixed code
+        fixed_code = data.get("fixed_code", code)
+        fixed_code = fixed_code.replace('\\n', '\n').replace('\\t', '\t')
+
+        return FixResult(
+            original_code=code,
+            fixed_code=fixed_code,
+            changes_made=data.get("changes_made", []),
+            explanation=data.get("explanation", "")
+        )
