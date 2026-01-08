@@ -2229,6 +2229,46 @@ def config_path():
     console.print("[dim]Precedence: CLI flags > project config > user config > defaults[/dim]")
 
 
+@cli.command("web")
+@click.option("--host", "-h", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
+@click.option("--port", "-p", default=8000, type=int, help="Port to listen on (default: 8000)")
+def web_server(host: str, port: int):
+    """Start the web UI server.
+
+    Launches a FastAPI server with a web interface for code reviews.
+    Open http://localhost:8000 in your browser to access the UI.
+
+    \b
+    API Endpoints:
+    - GET  /api/health          Health check
+    - POST /api/review          Submit code for review
+    - GET  /api/sessions        List past sessions
+    - GET  /api/sessions/{id}   Get session details
+    - WS   /ws/review           Streaming reviews
+    """
+    try:
+        import uvicorn
+    except ImportError:
+        console.print("[red]Error: uvicorn not installed.[/red]")
+        console.print("Install web dependencies with: pip install consensus[web]")
+        console.print("Or: pip install uvicorn fastapi websockets")
+        sys.exit(1)
+
+    console.print()
+    console.print(Panel.fit(
+        f"[bold green]Starting Consensus Web Server[/bold green]\n\n"
+        f"Server: http://{host if host != '0.0.0.0' else 'localhost'}:{port}\n"
+        f"API Docs: http://{host if host != '0.0.0.0' else 'localhost'}:{port}/docs\n\n"
+        "[dim]Press Ctrl+C to stop[/dim]",
+        title="Consensus Web UI",
+        border_style="green"
+    ))
+    console.print()
+
+    from src.web.app import app
+    uvicorn.run(app, host=host, port=port)
+
+
 def main():
     """Entry point for the CLI."""
     cli()
