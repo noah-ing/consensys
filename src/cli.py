@@ -83,6 +83,48 @@ def filter_issues_by_severity(issues: list, min_severity: str) -> list:
     ]
 
 
+def validate_file_path(file_path: Path, base_dir: Optional[Path] = None) -> Path:
+    """Validate a file path to prevent path traversal attacks.
+
+    Args:
+        file_path: The file path to validate
+        base_dir: Optional base directory to restrict access to (defaults to cwd)
+
+    Returns:
+        The validated, resolved absolute path
+
+    Raises:
+        click.ClickException: If the path is invalid or attempts traversal
+    """
+    # Resolve to absolute path
+    resolved = file_path.resolve()
+
+    # Get base directory (default to current working directory)
+    if base_dir is None:
+        base_dir = Path.cwd().resolve()
+    else:
+        base_dir = base_dir.resolve()
+
+    # Check that the resolved path is under the base directory
+    # This prevents path traversal attacks like ../../etc/passwd
+    try:
+        resolved.relative_to(base_dir)
+    except ValueError:
+        # Allow paths outside base_dir only if they're absolute and exist
+        if not resolved.exists():
+            raise click.ClickException(
+                f"File not found: {file_path}"
+            )
+
+    # Verify it's a file, not a directory
+    if not resolved.is_file():
+        raise click.ClickException(
+            f"Not a file: {file_path}"
+        )
+
+    return resolved
+
+
 def check_fail_threshold(reviews: list, consensus, fail_on: str) -> bool:
     """Check if any issues meet the fail-on threshold.
 
@@ -180,12 +222,19 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
 
     if file:
         file_path = Path(file)
+        # Validate path to prevent traversal attacks
         try:
-            code_content = file_path.read_text()
-        except Exception as e:
+            validated_path = validate_file_path(file_path)
+        except click.ClickException as e:
+            console.print(f"[red]{e.message}[/red]")
+            sys.exit(1)
+
+        try:
+            code_content = validated_path.read_text()
+        except (IOError, OSError, PermissionError) as e:
             console.print(f"[red]Error reading file: {e}[/red]")
             sys.exit(1)
-        context = context or f"File: {file_path.name}"
+        context = context or f"File: {validated_path.name}"
 
         # Handle --diff-only mode
         if diff_only:

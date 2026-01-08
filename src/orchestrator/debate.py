@@ -1,4 +1,5 @@
 """Debate orchestrator for multi-agent code review discussions."""
+import json
 import uuid
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -13,12 +14,18 @@ from rich.live import Live
 from rich.layout import Layout
 from rich.columns import Columns
 
+from anthropic import APIError, APIConnectionError, RateLimitError
+
 from src.agents.agent import Agent, ReviewResult, ResponseResult, VoteResult
 from src.agents.personas import PERSONAS, Persona
 from src.models.review import Review, Response, Vote, Consensus, VoteDecision
 from src.db.storage import Storage
 from src.cache import ReviewCache, get_cache, DEFAULT_CACHE_TTL_SECONDS
 from src.languages import LanguageInfo, detect_language, GENERIC
+
+# Specific exception types for API and threading errors
+APIExceptions = (APIError, APIConnectionError, RateLimitError)
+ThreadExceptions = (TimeoutError, RuntimeError)
 
 
 class DebateOrchestrator:
@@ -259,9 +266,10 @@ class DebateOrchestrator:
                         )
                         progress.remove_task(task_id)
 
-                    except Exception as e:
+                    except (*APIExceptions, *ThreadExceptions, ValueError, json.JSONDecodeError) as e:
+                        # Handle API errors, thread issues, and JSON parsing failures
                         self.console.print(
-                            f"[red]Error from {agent_name}: {e}[/red]"
+                            f"[red]Error from {agent_name}: {type(e).__name__}: {e}[/red]"
                         )
                         task_id = agent_tasks[agent_name]
                         progress.remove_task(task_id)
@@ -526,10 +534,11 @@ class DebateOrchestrator:
                         completed_responses.append(result)
                         progress.advance(overall_task)
 
-                    except Exception as e:
+                    except (*APIExceptions, *ThreadExceptions, ValueError, json.JSONDecodeError) as e:
+                        # Handle API errors, thread issues, and JSON parsing failures
                         self.console.print(
                             f"[red]Error from {agent.persona.name} responding to "
-                            f"{review_result.agent_name}: {e}[/red]"
+                            f"{review_result.agent_name}: {type(e).__name__}: {e}[/red]"
                         )
                         progress.advance(overall_task)
 
@@ -774,9 +783,10 @@ class DebateOrchestrator:
                         )
                         progress.remove_task(task_id)
 
-                    except Exception as e:
+                    except (*APIExceptions, *ThreadExceptions, ValueError, json.JSONDecodeError) as e:
+                        # Handle API errors, thread issues, and JSON parsing failures
                         self.console.print(
-                            f"[red]Error from {agent_name}: {e}[/red]"
+                            f"[red]Error from {agent_name}: {type(e).__name__}: {e}[/red]"
                         )
                         task_id = agent_tasks[agent_name]
                         progress.remove_task(task_id)
@@ -1197,9 +1207,10 @@ class DebateOrchestrator:
                     agent_results[name] = result
                     agent_complete[name] = True
                 return result
-            except Exception as e:
+            except (*APIExceptions, *ThreadExceptions, ValueError, json.JSONDecodeError) as e:
+                # Handle API errors, thread issues, and JSON parsing failures
                 with buffer_lock:
-                    agent_buffers[name].append(f"\n[Error: {e}]")
+                    agent_buffers[name].append(f"\n[{type(e).__name__}: {e}]")
                     agent_complete[name] = True
                 return None
 

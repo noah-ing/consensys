@@ -4,7 +4,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any, List, Tuple
 
-from anthropic import Anthropic
+from anthropic import Anthropic, APIError, APIConnectionError, RateLimitError
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
 from src.config import ANTHROPIC_API_KEY, DEFAULT_MODEL, MAX_TOKENS
@@ -124,7 +124,7 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((Exception,)),
+        retry=retry_if_exception_type((APIError, APIConnectionError, RateLimitError)),
         reraise=True
     )
     def _call_api(self, system_prompt: str, user_message: str, operation: str = "review") -> str:
