@@ -159,6 +159,51 @@
             opacity: 1;
             visibility: visible;
         }
+
+        /* Fix sections collapsible */
+        .fixes-section .fixes-content {
+            max-height: 2000px;
+            opacity: 1;
+            transition: all 0.3s ease;
+        }
+        .fixes-section.collapsed .fixes-content {
+            max-height: 0;
+            overflow: hidden;
+            padding: 0;
+            opacity: 0;
+        }
+        .fixes-section.collapsed [class*="chevron-"] {
+            transform: rotate(-90deg);
+        }
+        [class*="chevron-"] {
+            transition: transform 0.3s ease;
+        }
+
+        /* Fix card styling */
+        .fix-card {
+            border-radius: 0.75rem;
+            overflow: hidden;
+        }
+        .fix-card pre {
+            margin: 0;
+            border-radius: 0.5rem;
+        }
+        .fix-card code {
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        /* Copy button styling */
+        .copy-btn {
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+        .copy-btn:hover {
+            opacity: 1;
+        }
+        .copy-btn.copied {
+            color: #22c55e;
+        }
     </style>
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 transition-colors">
@@ -332,6 +377,96 @@ def example_function():
                         </h3>
                         <ul id="suggestions-list" class="space-y-1.5 text-sm text-slate-600 dark:text-slate-400"></ul>
                     </div>
+                </div>
+            </div>
+
+            <!-- Suggested Fixes Panel -->
+            <div id="fixes-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center">
+                        <svg class="w-6 h-6 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
+                        </svg>
+                        Suggested Fixes
+                    </h2>
+                    <span id="fixes-count" class="px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"></span>
+                </div>
+
+                <!-- Critical Fixes -->
+                <div id="fixes-critical" class="fixes-section hidden mb-4">
+                    <div class="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-t-xl border border-red-200 dark:border-red-800 cursor-pointer" onclick="toggleFixesSection('critical')">
+                        <h3 class="font-semibold text-red-700 dark:text-red-300 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                            </svg>
+                            Critical
+                            <span id="fixes-critical-count" class="ml-2 px-2 py-0.5 rounded-full text-xs bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200">0</span>
+                        </h3>
+                        <svg class="chevron-critical w-5 h-5 text-red-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <div id="fixes-critical-content" class="border-x border-b border-red-200 dark:border-red-800 rounded-b-xl p-4 space-y-4 bg-white dark:bg-slate-800"></div>
+                </div>
+
+                <!-- High Fixes -->
+                <div id="fixes-high" class="fixes-section hidden mb-4">
+                    <div class="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-t-xl border border-orange-200 dark:border-orange-800 cursor-pointer" onclick="toggleFixesSection('high')">
+                        <h3 class="font-semibold text-orange-700 dark:text-orange-300 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            High
+                            <span id="fixes-high-count" class="ml-2 px-2 py-0.5 rounded-full text-xs bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200">0</span>
+                        </h3>
+                        <svg class="chevron-high w-5 h-5 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <div id="fixes-high-content" class="border-x border-b border-orange-200 dark:border-orange-800 rounded-b-xl p-4 space-y-4 bg-white dark:bg-slate-800"></div>
+                </div>
+
+                <!-- Medium Fixes -->
+                <div id="fixes-medium" class="fixes-section hidden mb-4">
+                    <div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-t-xl border border-amber-200 dark:border-amber-800 cursor-pointer" onclick="toggleFixesSection('medium')">
+                        <h3 class="font-semibold text-amber-700 dark:text-amber-300 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Medium
+                            <span id="fixes-medium-count" class="ml-2 px-2 py-0.5 rounded-full text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">0</span>
+                        </h3>
+                        <svg class="chevron-medium w-5 h-5 text-amber-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <div id="fixes-medium-content" class="border-x border-b border-amber-200 dark:border-amber-800 rounded-b-xl p-4 space-y-4 bg-white dark:bg-slate-800"></div>
+                </div>
+
+                <!-- Low Fixes -->
+                <div id="fixes-low" class="fixes-section hidden mb-4">
+                    <div class="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-t-xl border border-green-200 dark:border-green-800 cursor-pointer" onclick="toggleFixesSection('low')">
+                        <h3 class="font-semibold text-green-700 dark:text-green-300 flex items-center">
+                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            Low
+                            <span id="fixes-low-count" class="ml-2 px-2 py-0.5 rounded-full text-xs bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200">0</span>
+                        </h3>
+                        <svg class="chevron-low w-5 h-5 text-green-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                        </svg>
+                    </div>
+                    <div id="fixes-low-content" class="border-x border-b border-green-200 dark:border-green-800 rounded-b-xl p-4 space-y-4 bg-white dark:bg-slate-800"></div>
+                </div>
+
+                <!-- No Fixes Message -->
+                <div id="no-fixes-msg" class="hidden text-center py-8 text-slate-500 dark:text-slate-400">
+                    <svg class="w-12 h-12 mx-auto mb-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <p class="font-medium">No fixes needed!</p>
+                    <p class="text-sm mt-1">All agents found your code to be acceptable.</p>
                 </div>
             </div>
 
@@ -697,6 +832,12 @@ def example_function():
             responsesSection.classList.add('hidden');
             votesSection.classList.add('hidden');
             agentStatusGrid.innerHTML = '';
+            // Reset fixes panel
+            document.getElementById('fixes-panel').classList.add('hidden');
+            ['critical', 'high', 'medium', 'low'].forEach(severity => {
+                document.getElementById(`fixes-${severity}`).classList.add('hidden');
+                document.getElementById(`fixes-${severity}-content`).innerHTML = '';
+            });
         }
 
         function showAgentStatus() {
@@ -734,6 +875,9 @@ def example_function():
 
             // Reviews
             (data.reviews || []).forEach(r => addReviewPanel(r));
+
+            // Extract and display fixes from reviews
+            displaySuggestedFixes(data.reviews || [], languageSelect.value);
 
             // Responses
             if (data.responses?.length) {
@@ -939,6 +1083,159 @@ def example_function():
             } else {
                 suggestions.classList.add('hidden');
             }
+        }
+
+        // ===================
+        // Suggested Fixes Functions
+        // ===================
+        function displaySuggestedFixes(reviews, language) {
+            const fixesPanel = document.getElementById('fixes-panel');
+            const noFixesMsg = document.getElementById('no-fixes-msg');
+
+            // Clear previous fixes
+            ['critical', 'high', 'medium', 'low'].forEach(severity => {
+                document.getElementById(`fixes-${severity}`).classList.add('hidden');
+                document.getElementById(`fixes-${severity}-content`).innerHTML = '';
+            });
+
+            // Collect all issues with fixes from all reviews
+            const fixesBySeverity = { critical: [], high: [], medium: [], low: [] };
+            let totalFixes = 0;
+
+            reviews.forEach(review => {
+                if (!review.issues) return;
+                review.issues.forEach(issue => {
+                    // Handle both object and string issues
+                    const issueObj = typeof issue === 'string' ? { description: issue, severity: 'LOW' } : issue;
+                    if (issueObj.fix) {
+                        const severity = (issueObj.severity || 'LOW').toLowerCase();
+                        if (fixesBySeverity[severity]) {
+                            fixesBySeverity[severity].push({
+                                ...issueObj,
+                                agent_name: review.agent_name
+                            });
+                            totalFixes++;
+                        }
+                    }
+                });
+            });
+
+            // Show panel if there are any fixes
+            if (totalFixes === 0) {
+                fixesPanel.classList.remove('hidden');
+                noFixesMsg.classList.remove('hidden');
+                document.getElementById('fixes-count').textContent = '0 fixes';
+                return;
+            }
+
+            fixesPanel.classList.remove('hidden');
+            noFixesMsg.classList.add('hidden');
+            document.getElementById('fixes-count').textContent = `${totalFixes} fix${totalFixes !== 1 ? 'es' : ''}`;
+
+            // Populate each severity section
+            Object.entries(fixesBySeverity).forEach(([severity, fixes]) => {
+                if (fixes.length === 0) return;
+
+                const section = document.getElementById(`fixes-${severity}`);
+                const content = document.getElementById(`fixes-${severity}-content`);
+                const countBadge = document.getElementById(`fixes-${severity}-count`);
+
+                section.classList.remove('hidden');
+                countBadge.textContent = fixes.length;
+
+                content.innerHTML = fixes.map((fix, idx) => createFixCard(fix, language, `${severity}-${idx}`)).join('');
+            });
+
+            // Apply Prism syntax highlighting
+            Prism.highlightAll();
+        }
+
+        function createFixCard(issue, language, id) {
+            const prismLang = getPrismLanguage(language);
+            const lineInfo = issue.line ? `<span class="text-xs text-slate-400 ml-2">Line ${issue.line}</span>` : '';
+            const agentBadge = issue.agent_name ? `<span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 ml-2">${formatAgentName(issue.agent_name)}</span>` : '';
+
+            return `
+                <div class="fix-card bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+                    <div class="p-4 border-b border-slate-200 dark:border-slate-700">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex-1">
+                                <p class="text-sm font-medium text-slate-800 dark:text-slate-200">${escapeHtml(issue.description)}</p>
+                                <div class="flex items-center mt-1">${lineInfo}${agentBadge}</div>
+                            </div>
+                        </div>
+                    </div>
+                    ${issue.original_code ? `
+                        <div class="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-slate-200 dark:border-slate-700">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-xs font-medium text-red-600 dark:text-red-400 flex items-center">
+                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                    </svg>
+                                    Original Code
+                                </span>
+                            </div>
+                            <pre class="!bg-transparent !p-0 !m-0"><code class="language-${prismLang} !bg-transparent">${escapeHtml(issue.original_code)}</code></pre>
+                        </div>
+                    ` : ''}
+                    <div class="px-4 py-2 bg-green-50 dark:bg-green-900/20">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-medium text-green-600 dark:text-green-400 flex items-center">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                Suggested Fix
+                            </span>
+                            <button onclick="copyFixToClipboard(this, '${id}')" class="copy-btn flex items-center text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                </svg>
+                                Copy
+                            </button>
+                        </div>
+                        <pre class="!bg-transparent !p-0 !m-0"><code id="fix-code-${id}" class="language-${prismLang} !bg-transparent">${escapeHtml(issue.fix)}</code></pre>
+                    </div>
+                </div>
+            `;
+        }
+
+        function toggleFixesSection(severity) {
+            const section = document.getElementById(`fixes-${severity}`);
+            section.classList.toggle('collapsed');
+        }
+
+        function copyFixToClipboard(btn, id) {
+            const codeEl = document.getElementById(`fix-code-${id}`);
+            const text = codeEl ? codeEl.textContent : '';
+
+            navigator.clipboard.writeText(text).then(() => {
+                btn.classList.add('copied');
+                const originalHTML = btn.innerHTML;
+                btn.innerHTML = `
+                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Copied!
+                `;
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = originalHTML;
+                }, 2000);
+            }).catch(() => {
+                showToast('Failed to copy to clipboard', 'error');
+            });
+        }
+
+        function getPrismLanguage(lang) {
+            const mapping = {
+                'python': 'python',
+                'javascript': 'javascript',
+                'typescript': 'typescript',
+                'go': 'go',
+                'rust': 'rust',
+                'java': 'java'
+            };
+            return mapping[lang] || 'python';
         }
 
         // ===================
