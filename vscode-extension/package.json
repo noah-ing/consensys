@@ -22,20 +22,31 @@
     "type": "git",
     "url": "https://github.com/consensus/consensus"
   },
+  "icon": "images/icon.png",
   "activationEvents": [
-    "onCommand:consensus.reviewFile",
-    "onCommand:consensus.reviewSelection"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "consensus.reviewFile",
-        "title": "Consensus: Review Current File"
+        "title": "Consensus: Review Current File",
+        "icon": "$(shield)"
       },
       {
         "command": "consensus.reviewSelection",
-        "title": "Consensus: Review Selection"
+        "title": "Consensus: Review Selection",
+        "icon": "$(selection)"
+      },
+      {
+        "command": "consensus.clearDiagnostics",
+        "title": "Consensus: Clear Review Diagnostics",
+        "icon": "$(clear-all)"
+      },
+      {
+        "command": "consensus.showFixSuggestion",
+        "title": "Consensus: Show Fix Suggestion"
       }
     ],
     "menus": {
@@ -43,11 +54,31 @@
         {
           "command": "consensus.reviewSelection",
           "when": "editorHasSelection",
-          "group": "consensus"
+          "group": "consensus@1"
         },
         {
           "command": "consensus.reviewFile",
-          "group": "consensus"
+          "group": "consensus@2"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "consensus.reviewFile",
+          "when": "resourceLangId =~ /python|javascript|typescript|go|rust|java|cpp|c/",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "consensus.reviewFile",
+          "when": "editorIsOpen"
+        },
+        {
+          "command": "consensus.reviewSelection",
+          "when": "editorHasSelection"
+        },
+        {
+          "command": "consensus.clearDiagnostics"
         }
       ]
     },
@@ -64,7 +95,22 @@
         "mac": "cmd+shift+alt+r",
         "when": "editorTextFocus && editorHasSelection"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "Consensus Code Review",
+      "properties": {
+        "consensus.apiEndpoint": {
+          "type": "string",
+          "default": "http://localhost:8000",
+          "description": "The URL of the Consensus web API server"
+        },
+        "consensus.autoReviewOnSave": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically review files when saved"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

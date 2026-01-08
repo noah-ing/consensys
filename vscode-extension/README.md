@@ -6,6 +6,10 @@ Multi-agent AI code review with debate-style consensus building, right in your e
 
 - **Review Current File**: Get a comprehensive code review from multiple AI agents
 - **Review Selection**: Review just the selected code snippet
+- **Diagnostic Integration**: Issues show as warnings/errors in the Problems panel and editor
+- **Code Actions**: Quick fixes with "Fix with Consensus" suggestions
+- **Status Bar**: Real-time review status indicator
+- **Auto-Review**: Optionally review files on save
 - **Output Panel**: Detailed review results with issues, suggestions, and consensus
 - **Context Menu**: Right-click access to review commands
 
@@ -68,6 +72,7 @@ The server runs on `http://localhost:8000` by default.
    - Press `Ctrl+Shift+R` (or `Cmd+Shift+R` on Mac)
    - Open Command Palette (`Ctrl+Shift+P`) and search for "Consensus: Review Current File"
    - Right-click in the editor and select "Consensus: Review Current File"
+   - Click the Consensus icon in the status bar
 
 ### Review Selection
 
@@ -78,14 +83,26 @@ The server runs on `http://localhost:8000` by default.
 
 ### View Results
 
-Results appear in the Output panel under "Consensus Review". The output includes:
+Results appear in multiple places:
 
-- Individual agent reviews with severity and confidence
-- Issues found with severity levels (LOW, MEDIUM, HIGH, CRITICAL)
-- Suggestions from each agent
-- Final consensus decision (APPROVE/REJECT/ABSTAIN)
-- Key issues agreed upon by multiple agents
-- Accepted suggestions
+1. **Problems Panel**: Issues show as warnings/errors you can click to navigate
+2. **Editor**: Squiggly underlines highlight problematic code
+3. **Output Panel**: Full review details under "Consensus Review"
+4. **Status Bar**: Quick summary with error/warning counts
+
+### Code Actions (Quick Fixes)
+
+When you hover over an issue, click the lightbulb icon to see:
+- **Fix suggestions**: Copy AI-generated fix suggestions
+- **Review with Consensus**: Re-review the file
+
+### Auto-Review on Save
+
+Enable automatic reviews when you save files:
+
+1. Open Settings (`Ctrl+,`)
+2. Search for "consensus"
+3. Check "Auto Review On Save"
 
 ## Configuration
 
@@ -93,7 +110,8 @@ Configure the extension in VS Code settings:
 
 ```json
 {
-  "consensus.apiEndpoint": "http://localhost:8000"
+  "consensus.apiEndpoint": "http://localhost:8000",
+  "consensus.autoReviewOnSave": false
 }
 ```
 
@@ -102,6 +120,7 @@ Configure the extension in VS Code settings:
 | Setting | Description | Default |
 |---------|-------------|---------|
 | `consensus.apiEndpoint` | URL of the Consensus web API | `http://localhost:8000` |
+| `consensus.autoReviewOnSave` | Automatically review files when saved | `false` |
 
 ## Keyboard Shortcuts
 
@@ -109,6 +128,18 @@ Configure the extension in VS Code settings:
 |---------|---------------|-----|
 | Review Current File | `Ctrl+Shift+R` | `Cmd+Shift+R` |
 | Review Selection | `Ctrl+Shift+Alt+R` | `Cmd+Shift+Alt+R` |
+
+## Status Bar Icons
+
+The status bar shows the current review state:
+
+| Icon | Meaning |
+|------|---------|
+| Shield | Ready to review (click to start) |
+| Spinning | Review in progress |
+| Check | Review passed, no issues |
+| Warning | Review complete, warnings found |
+| Error | Review complete, errors found |
 
 ## Troubleshooting
 
@@ -130,6 +161,12 @@ consensus web
 
 - Use "Quick Mode" (enabled by default) for faster reviews
 - Check your internet connection to the Anthropic API
+
+### Clear Diagnostics
+
+To clear all Consensus diagnostics:
+- Open Command Palette (`Ctrl+Shift+P`)
+- Search for "Consensus: Clear Review Diagnostics"
 
 ## Development
 
@@ -157,6 +194,8 @@ npm run lint
 ```bash
 npm run package
 ```
+
+This creates a `.vsix` file that can be installed in VS Code.
 
 ## Contributing
 

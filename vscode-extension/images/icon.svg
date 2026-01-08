@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667EEA"/>
+      <stop offset="100%" style="stop-color:#764BA2"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="16" fill="url(#bg)"/>
+  <g fill="white">
+    <!-- Shield icon representing consensus/protection -->
+    <path d="M64 16L24 32v32c0 26.5 17.5 51.2 40 60 22.5-8.8 40-33.5 40-60V32L64 16zm0 8.7l32 12.8v27.5c0 21.3-13.5 41.2-32 49-18.5-7.8-32-27.7-32-49V37.5l32-12.8z"/>
+    <!-- Checkmark inside shield -->
+    <path d="M56 62l-8-8-4 4 12 12 24-24-4-4-20 20z"/>
+  </g>
+</svg>
