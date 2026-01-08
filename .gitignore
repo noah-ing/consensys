@@ -14,6 +14,11 @@ venv/
 dist/
 build/
 
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+
 # IDE
 .idea/
 .vscode/
@@ -24,6 +29,14 @@ build/
 *.db
 *.sqlite
 data/*.db
+
+# Node.js
+node_modules/
+
+# VS Code Extension
+*.vsix
+vscode-extension/out/
+vscode-extension/node_modules/
 
 # OS
 .DS_Store
