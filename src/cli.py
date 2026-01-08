@@ -2711,12 +2711,12 @@ def config_path():
 
 @cli.command("web")
 @click.option("--host", "-h", default="0.0.0.0", help="Host to bind to (default: 0.0.0.0)")
-@click.option("--port", "-p", default=8000, type=int, help="Port to listen on (default: 8000)")
+@click.option("--port", "-p", default=8080, type=int, help="Port to listen on (default: 8080)")
 def web_server(host: str, port: int):
     """Start the web UI server.
 
     Launches a FastAPI server with a web interface for code reviews.
-    Open http://localhost:8000 in your browser to access the UI.
+    Open http://localhost:8080 in your browser to access the UI.
 
     \b
     API Endpoints:
