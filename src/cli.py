@@ -11,6 +11,7 @@ from rich.syntax import Syntax
 from rich.text import Text
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
+from src import __version__
 from src.orchestrator.debate import DebateOrchestrator
 from src.db.storage import Storage
 from src.models.review import VoteDecision, Severity
@@ -111,7 +112,7 @@ def check_fail_threshold(reviews: list, consensus, fail_on: str) -> bool:
 
 
 @click.group()
-@click.version_option(version="0.1.0", prog_name="consensus")
+@click.version_option(version=__version__, prog_name="consensus")
 def cli():
     """Consensus - Multi-agent AI code review with debate and voting.
 
