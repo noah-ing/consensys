@@ -1049,6 +1049,161 @@ def stats():
     console.print("[dim]Run 'consensus export <session_id> --format html' for detailed reports.[/dim]")
 
 
+@cli.command()
+@click.option("--period", "-p", type=click.Choice(["daily", "weekly", "monthly"]),
+              default="daily", help="Time period for cost breakdown")
+@click.option("--days", "-d", default=30, type=int,
+              help="Number of days to look back (default: 30)")
+@click.option("--budget", "-b", type=float, default=None,
+              help="Monthly budget in USD for threshold alerts")
+def metrics(period: str, days: int, budget: Optional[float]):
+    """Show API usage metrics and cost tracking.
+
+    Displays token usage, API call costs, and performance metrics.
+    Useful for monitoring spending and identifying optimization opportunities.
+
+    \b
+    Examples:
+        consensus metrics                      # Show summary
+        consensus metrics --period weekly      # Weekly breakdown
+        consensus metrics --days 7             # Last 7 days only
+        consensus metrics --budget 10.00       # Set $10 budget alert
+    """
+    from src.metrics import get_metrics_tracker, PRICING
+
+    tracker = get_metrics_tracker()
+    summary = tracker.get_summary()
+
+    if summary.total_calls == 0:
+        console.print("[yellow]No API metrics recorded yet.[/yellow]")
+        console.print("Run 'consensus review <file>' to start generating metrics.")
+        return
+
+    console.print()
+    console.print(Panel(
+        "[bold cyan]API Usage Metrics & Cost Tracking[/bold cyan]",
+        border_style="cyan",
+    ))
+    console.print()
+
+    # Overall summary table
+    summary_table = Table(title="Overall Summary", show_header=True, header_style="bold blue")
+    summary_table.add_column("Metric", style="dim")
+    summary_table.add_column("Value", justify="right")
+
+    summary_table.add_row("Total API Calls", f"{summary.total_calls:,}")
+    summary_table.add_row("Input Tokens", f"{summary.total_tokens_in:,}")
+    summary_table.add_row("Output Tokens", f"{summary.total_tokens_out:,}")
+    summary_table.add_row("Total Tokens", f"{summary.total_tokens:,}")
+    summary_table.add_row("Total Cost", f"${summary.total_cost_usd:.4f}")
+    summary_table.add_row("Avg Cost/Call", f"${summary.avg_cost_per_call:.6f}")
+    summary_table.add_row("Avg Duration", f"{summary.avg_duration_ms:.0f}ms")
+
+    console.print(summary_table)
+    console.print()
+
+    # Cost by agent
+    if summary.by_agent:
+        agent_table = Table(title="Cost by Agent", show_header=True, header_style="bold blue")
+        agent_table.add_column("Agent", style="cyan")
+        agent_table.add_column("Calls", justify="right")
+        agent_table.add_column("Tokens", justify="right")
+        agent_table.add_column("Cost", justify="right")
+        agent_table.add_column("Avg Duration", justify="right")
+
+        for agent_name, data in sorted(summary.by_agent.items()):
+            total_tokens = data["tokens_in"] + data["tokens_out"]
+            agent_table.add_row(
+                agent_name,
+                str(data["calls"]),
+                f"{total_tokens:,}",
+                f"${data['cost_usd']:.4f}",
+                f"{data['avg_duration_ms']:.0f}ms",
+            )
+
+        console.print(agent_table)
+        console.print()
+
+    # Cost by operation
+    if summary.by_operation:
+        op_table = Table(title="Cost by Operation", show_header=True, header_style="bold blue")
+        op_table.add_column("Operation", style="cyan")
+        op_table.add_column("Calls", justify="right")
+        op_table.add_column("Tokens", justify="right")
+        op_table.add_column("Cost", justify="right")
+
+        op_colors = {"review": "green", "respond": "yellow", "vote": "blue", "fix": "magenta"}
+        for op_name, data in sorted(summary.by_operation.items()):
+            total_tokens = data["tokens_in"] + data["tokens_out"]
+            color = op_colors.get(op_name, "white")
+            op_table.add_row(
+                f"[{color}]{op_name}[/{color}]",
+                str(data["calls"]),
+                f"{total_tokens:,}",
+                f"${data['cost_usd']:.4f}",
+            )
+
+        console.print(op_table)
+        console.print()
+
+    # Time-based cost breakdown
+    breakdown = tracker.get_cost_breakdown(period=period, days=days)
+
+    if breakdown.daily_breakdown:
+        period_title = {"daily": "Daily", "weekly": "Weekly", "monthly": "Monthly"}[period]
+        time_table = Table(
+            title=f"{period_title} Cost Breakdown ({breakdown.start_date} to {breakdown.end_date})",
+            show_header=True,
+            header_style="bold blue"
+        )
+        time_table.add_column("Period", style="dim")
+        time_table.add_column("Calls", justify="right")
+        time_table.add_column("Tokens", justify="right")
+        time_table.add_column("Cost", justify="right")
+
+        for entry in breakdown.daily_breakdown[:14]:  # Show last 14 entries max
+            time_table.add_row(
+                entry["period"],
+                str(entry["calls"]),
+                f"{entry['tokens']:,}",
+                f"${entry['cost_usd']:.4f}",
+            )
+
+        console.print(time_table)
+        console.print()
+
+    # Budget alert
+    if budget:
+        is_over, current_spend, percentage = tracker.check_budget(budget, period_days=30)
+
+        if is_over:
+            console.print(Panel(
+                f"[bold red]Budget Alert![/bold red]\n\n"
+                f"Current 30-day spending: [red]${current_spend:.4f}[/red]\n"
+                f"Budget: ${budget:.2f}\n"
+                f"Usage: [red]{percentage:.1f}%[/red] of budget",
+                title="[bold red]Over Budget Threshold (80%)[/bold red]",
+                border_style="red",
+            ))
+        else:
+            console.print(Panel(
+                f"[bold green]Budget Status: OK[/bold green]\n\n"
+                f"Current 30-day spending: ${current_spend:.4f}\n"
+                f"Budget: ${budget:.2f}\n"
+                f"Usage: [green]{percentage:.1f}%[/green] of budget",
+                title="[bold green]Within Budget[/bold green]",
+                border_style="green",
+            ))
+        console.print()
+
+    # Model pricing reference
+    console.print("[dim]Pricing Reference (Claude 3.5 Haiku):[/dim]")
+    console.print(f"[dim]  Input: ${PRICING['claude-3-5-haiku-20241022']['input_per_million']:.2f}/M tokens[/dim]")
+    console.print(f"[dim]  Output: ${PRICING['claude-3-5-haiku-20241022']['output_per_million']:.2f}/M tokens[/dim]")
+    console.print()
+    console.print("[dim]Run 'consensus metrics --budget 10.00' to set budget alerts.[/dim]")
+
+
 def load_consensusignore(directory: Path) -> list:
     """Load ignore patterns from .consensusignore file.
 

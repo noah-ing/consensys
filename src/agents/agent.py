@@ -1,7 +1,8 @@
 """Agent wrapper for Claude API calls with persona-based system prompts."""
 import json
+import time
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Tuple
 
 from anthropic import Anthropic
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
@@ -10,6 +11,7 @@ from src.config import ANTHROPIC_API_KEY, DEFAULT_MODEL, MAX_TOKENS
 from src.agents.personas import Persona
 from src.models.review import VoteDecision
 from src.languages import LanguageInfo, get_language_prompt_hints, GENERIC
+from src.metrics import record_api_call
 
 
 @dataclass
@@ -44,16 +46,18 @@ class VoteResult:
 class Agent:
     """Wraps Claude API calls with a specific persona's system prompt."""
 
-    def __init__(self, persona: Persona):
+    def __init__(self, persona: Persona, session_id: Optional[str] = None):
         """Initialize agent with a persona.
 
         Args:
             persona: The persona defining this agent's behavior and focus
+            session_id: Optional session ID for metrics tracking
         """
         self.persona = persona
         self.client = Anthropic(api_key=ANTHROPIC_API_KEY)
         self.model = DEFAULT_MODEL
         self.max_tokens = MAX_TOKENS
+        self.session_id = session_id or ""
 
     def _build_system_prompt(self, task_type: str, language: Optional[LanguageInfo] = None) -> str:
         """Build a complete system prompt for a specific task.
@@ -123,16 +127,19 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
         retry=retry_if_exception_type((Exception,)),
         reraise=True
     )
-    def _call_api(self, system_prompt: str, user_message: str) -> str:
-        """Make a Claude API call with retry logic.
+    def _call_api(self, system_prompt: str, user_message: str, operation: str = "review") -> str:
+        """Make a Claude API call with retry logic and metrics tracking.
 
         Args:
             system_prompt: The system prompt to use
             user_message: The user message/query
+            operation: The type of operation (review, respond, vote, fix)
 
         Returns:
             The assistant's response text
         """
+        start_time = time.time()
+
         response = self.client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
@@ -141,24 +148,41 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
                 {"role": "user", "content": user_message}
             ]
         )
+
+        # Record metrics
+        duration_ms = int((time.time() - start_time) * 1000)
+        if self.session_id and hasattr(response, 'usage'):
+            record_api_call(
+                session_id=self.session_id,
+                agent_name=self.persona.name,
+                model=self.model,
+                tokens_in=response.usage.input_tokens,
+                tokens_out=response.usage.output_tokens,
+                duration_ms=duration_ms,
+                operation=operation,
+            )
+
         return response.content[0].text
 
     def _call_api_streaming(
         self,
         system_prompt: str,
         user_message: str,
-        on_token: Optional[callable] = None
+        on_token: Optional[callable] = None,
+        operation: str = "review"
     ) -> str:
-        """Make a streaming Claude API call.
+        """Make a streaming Claude API call with metrics tracking.
 
         Args:
             system_prompt: The system prompt to use
             user_message: The user message/query
             on_token: Callback function called with each token
+            operation: The type of operation (review, respond, vote, fix)
 
         Returns:
             The complete response text
         """
+        start_time = time.time()
         full_response = []
 
         with self.client.messages.stream(
@@ -171,6 +195,22 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
                 full_response.append(text)
                 if on_token:
                     on_token(text)
+
+            # Get final message for usage stats
+            final_message = stream.get_final_message()
+
+        # Record metrics
+        duration_ms = int((time.time() - start_time) * 1000)
+        if self.session_id and hasattr(final_message, 'usage'):
+            record_api_call(
+                session_id=self.session_id,
+                agent_name=self.persona.name,
+                model=self.model,
+                tokens_in=final_message.usage.input_tokens,
+                tokens_out=final_message.usage.output_tokens,
+                duration_ms=duration_ms,
+                operation=operation,
+            )
 
         return "".join(full_response)
 
@@ -310,7 +350,7 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
 
 Please respond to {other_review.agent_name}'s review above. Do you agree with their assessment? What would you add or challenge?"""
 
-        response = self._call_api(system_prompt, user_message)
+        response = self._call_api(system_prompt, user_message, operation="respond")
         data = self._parse_json_response(response)
 
         return ResponseResult(
@@ -357,7 +397,7 @@ Please respond to {other_review.agent_name}'s review above. Do you agree with th
 
 Based on the code and the debate above, cast your vote. Consider all perspectives but make your own judgment based on your expertise and priorities."""
 
-        response = self._call_api(system_prompt, user_message)
+        response = self._call_api(system_prompt, user_message, operation="vote")
         data = self._parse_json_response(response)
 
         decision_str = data.get("decision", "ABSTAIN").upper()
@@ -388,10 +428,11 @@ class FixResult:
 class CodeFixer:
     """Fixes code based on consensus review feedback."""
 
-    def __init__(self):
+    def __init__(self, session_id: Optional[str] = None):
         self.client = Anthropic(api_key=ANTHROPIC_API_KEY)
         self.model = DEFAULT_MODEL
         self.max_tokens = 4096  # More tokens for code output
+        self.session_id = session_id or ""
 
     def fix_code(
         self,
@@ -444,12 +485,26 @@ Rules:
         if context:
             user_message = f"Context: {context}\n\n{user_message}"
 
+        start_time = time.time()
         response = self.client.messages.create(
             model=self.model,
             max_tokens=self.max_tokens,
             system=system_prompt,
             messages=[{"role": "user", "content": user_message}]
         )
+
+        # Record metrics
+        duration_ms = int((time.time() - start_time) * 1000)
+        if self.session_id and hasattr(response, 'usage'):
+            record_api_call(
+                session_id=self.session_id,
+                agent_name="CodeFixer",
+                model=self.model,
+                tokens_in=response.usage.input_tokens,
+                tokens_out=response.usage.output_tokens,
+                duration_ms=duration_ms,
+                operation="fix",
+            )
 
         text = response.content[0].text.strip()
 

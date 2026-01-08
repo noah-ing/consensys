@@ -48,7 +48,6 @@ class DebateOrchestrator:
             language: Optional language info for language-specific review hints.
         """
         self.personas = personas or PERSONAS
-        self.agents = [Agent(persona) for persona in self.personas]
         self.storage = storage or Storage()
         self.console = console or Console()
         self.use_cache = use_cache
@@ -58,6 +57,9 @@ class DebateOrchestrator:
 
         # Current session state
         self.session_id: Optional[str] = None
+
+        # Create agents (will update with session_id when session starts)
+        self.agents = [Agent(persona) for persona in self.personas]
         self.code: Optional[str] = None
         self.context: Optional[str] = None
         self.reviews: List[Review] = []
@@ -198,6 +200,10 @@ class DebateOrchestrator:
         self.code = code
         self.context = context
         self.reviews = []
+
+        # Update agents with session_id for metrics tracking
+        for agent in self.agents:
+            agent.session_id = self.session_id
 
         self.console.print()
         self.console.rule("[bold blue]Round 1: Initial Reviews[/bold blue]")
@@ -1120,6 +1126,10 @@ class DebateOrchestrator:
         self.code = code
         self.context = context
         self.reviews = []
+
+        # Update agents with session_id for metrics tracking
+        for agent in self.agents:
+            agent.session_id = self.session_id
 
         self.console.print()
         self.console.rule("[bold blue]Parallel Streaming Review[/bold blue]")
