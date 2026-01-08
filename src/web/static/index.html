@@ -763,6 +763,28 @@ def example_function():
                 </div>
             </div>
 
+            <!-- Quick Actions Panel -->
+            <div id="quick-actions-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 fade-in">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center">
+                        <svg class="w-6 h-6 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        Quick Actions
+                    </h2>
+                    <span id="quick-actions-count" class="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"></span>
+                </div>
+
+                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                    Common security patterns detected. Click to view fix implementation and documentation.
+                </p>
+
+                <!-- Quick Action Categories -->
+                <div id="quick-actions-container" class="space-y-4">
+                    <!-- Categories will be populated dynamically -->
+                </div>
+            </div>
+
             <!-- Apply All Fixes Panel -->
             <div id="apply-fixes-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 fade-in">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
@@ -1235,6 +1257,9 @@ def example_function():
 
             // Extract and display fixes from reviews
             displaySuggestedFixes(data.reviews || [], languageSelect.value);
+
+            // Display Quick Actions panel for common patterns
+            displayQuickActions(data.reviews || []);
 
             // Apply all fixes section - use the original code from data or from the input
             const originalCode = data.code || codeInput.value;
@@ -1836,6 +1861,333 @@ def example_function():
                 }, 2000);
             }).catch(() => {
                 showToast('Failed to copy to clipboard', 'error');
+            });
+        }
+
+        // ===================
+        // Quick Actions Functions
+        // ===================
+
+        // Common security fix patterns with documentation
+        const QUICK_ACTION_PATTERNS = {
+            'input-validation': {
+                name: 'Input Validation',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                color: 'blue',
+                keywords: ['input', 'validation', 'validate', 'sanitize', 'sanitization', 'user input', 'untrusted'],
+                docs: [
+                    { title: 'OWASP Input Validation', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html' },
+                    { title: 'CWE-20: Improper Input Validation', url: 'https://cwe.mitre.org/data/definitions/20.html' }
+                ],
+                description: 'Validate and sanitize all user inputs before processing'
+            },
+            'sql-injection': {
+                name: 'SQL Injection Prevention',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7c-2 0-3 1-3 3z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 11h6M9 15h6"></path></svg>`,
+                color: 'red',
+                keywords: ['sql', 'injection', 'query', 'parameterized', 'prepared statement', 'database', 'execute', 'cursor'],
+                docs: [
+                    { title: 'OWASP SQL Injection Prevention', url: 'https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html' },
+                    { title: 'CWE-89: SQL Injection', url: 'https://cwe.mitre.org/data/definitions/89.html' }
+                ],
+                description: 'Use parameterized queries to prevent SQL injection attacks'
+            },
+            'xss-prevention': {
+                name: 'XSS Prevention',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>`,
+                color: 'orange',
+                keywords: ['xss', 'cross-site', 'escape', 'html', 'script', 'output encoding', 'sanitize output'],
+                docs: [
+                    { title: 'OWASP XSS Prevention', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html' },
+                    { title: 'CWE-79: XSS', url: 'https://cwe.mitre.org/data/definitions/79.html' }
+                ],
+                description: 'Escape output to prevent cross-site scripting attacks'
+            },
+            'authentication': {
+                name: 'Authentication',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>`,
+                color: 'purple',
+                keywords: ['auth', 'password', 'hash', 'bcrypt', 'session', 'token', 'credential', 'login'],
+                docs: [
+                    { title: 'OWASP Authentication', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html' },
+                    { title: 'OWASP Password Storage', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html' }
+                ],
+                description: 'Secure authentication and password handling'
+            },
+            'path-traversal': {
+                name: 'Path Traversal Prevention',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>`,
+                color: 'amber',
+                keywords: ['path', 'traversal', 'directory', 'file', '../', 'lfi', 'local file'],
+                docs: [
+                    { title: 'OWASP Path Traversal', url: 'https://owasp.org/www-community/attacks/Path_Traversal' },
+                    { title: 'CWE-22: Path Traversal', url: 'https://cwe.mitre.org/data/definitions/22.html' }
+                ],
+                description: 'Validate and sanitize file paths to prevent directory traversal'
+            },
+            'command-injection': {
+                name: 'Command Injection Prevention',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`,
+                color: 'red',
+                keywords: ['command', 'injection', 'shell', 'exec', 'system', 'subprocess', 'os.system', 'popen'],
+                docs: [
+                    { title: 'OWASP Command Injection', url: 'https://owasp.org/www-community/attacks/Command_Injection' },
+                    { title: 'CWE-78: OS Command Injection', url: 'https://cwe.mitre.org/data/definitions/78.html' }
+                ],
+                description: 'Avoid shell commands with user input; use safe APIs'
+            },
+            'error-handling': {
+                name: 'Error Handling',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                color: 'yellow',
+                keywords: ['error', 'exception', 'try', 'catch', 'handling', 'logging', 'stack trace'],
+                docs: [
+                    { title: 'OWASP Error Handling', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html' },
+                    { title: 'CWE-209: Error Message Exposure', url: 'https://cwe.mitre.org/data/definitions/209.html' }
+                ],
+                description: 'Handle errors securely without exposing sensitive information'
+            },
+            'cryptography': {
+                name: 'Cryptography',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>`,
+                color: 'indigo',
+                keywords: ['crypto', 'encrypt', 'decrypt', 'hash', 'md5', 'sha', 'aes', 'rsa', 'key', 'random'],
+                docs: [
+                    { title: 'OWASP Cryptographic Storage', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html' },
+                    { title: 'CWE-327: Broken Crypto', url: 'https://cwe.mitre.org/data/definitions/327.html' }
+                ],
+                description: 'Use strong, modern cryptographic algorithms'
+            },
+            'secrets-management': {
+                name: 'Secrets Management',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>`,
+                color: 'rose',
+                keywords: ['secret', 'api key', 'password', 'credential', 'hardcoded', 'environment', 'config'],
+                docs: [
+                    { title: 'OWASP Secrets Management', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html' },
+                    { title: 'CWE-798: Hardcoded Credentials', url: 'https://cwe.mitre.org/data/definitions/798.html' }
+                ],
+                description: 'Store secrets securely, never hardcode credentials'
+            },
+            'access-control': {
+                name: 'Access Control',
+                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>`,
+                color: 'teal',
+                keywords: ['access', 'authorization', 'permission', 'role', 'privilege', 'admin', 'idor'],
+                docs: [
+                    { title: 'OWASP Access Control', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html' },
+                    { title: 'CWE-284: Improper Access Control', url: 'https://cwe.mitre.org/data/definitions/284.html' }
+                ],
+                description: 'Implement proper access control checks'
+            }
+        };
+
+        function displayQuickActions(reviews) {
+            const panel = document.getElementById('quick-actions-panel');
+            const container = document.getElementById('quick-actions-container');
+            const countBadge = document.getElementById('quick-actions-count');
+
+            // Collect all issues and their fixes
+            const allIssues = [];
+            reviews.forEach(review => {
+                if (!review.issues) return;
+                review.issues.forEach(issue => {
+                    const issueObj = typeof issue === 'string' ? { description: issue } : issue;
+                    allIssues.push({
+                        ...issueObj,
+                        agent_name: review.agent_name
+                    });
+                });
+            });
+
+            if (allIssues.length === 0) {
+                panel.classList.add('hidden');
+                return;
+            }
+
+            // Match issues to patterns
+            const matchedPatterns = {};
+            allIssues.forEach(issue => {
+                const text = `${issue.description || ''} ${issue.fix || ''}`.toLowerCase();
+
+                Object.entries(QUICK_ACTION_PATTERNS).forEach(([patternId, pattern]) => {
+                    const matches = pattern.keywords.some(kw => text.includes(kw.toLowerCase()));
+                    if (matches) {
+                        if (!matchedPatterns[patternId]) {
+                            matchedPatterns[patternId] = {
+                                ...pattern,
+                                id: patternId,
+                                issues: []
+                            };
+                        }
+                        matchedPatterns[patternId].issues.push(issue);
+                    }
+                });
+            });
+
+            const patternCount = Object.keys(matchedPatterns).length;
+            if (patternCount === 0) {
+                panel.classList.add('hidden');
+                return;
+            }
+
+            // Show panel
+            panel.classList.remove('hidden');
+            countBadge.textContent = `${patternCount} pattern${patternCount !== 1 ? 's' : ''} detected`;
+
+            // Group patterns by category for display
+            container.innerHTML = Object.entries(matchedPatterns).map(([id, pattern]) =>
+                createQuickActionCard(pattern)
+            ).join('');
+        }
+
+        function getColorClasses(color) {
+            const colors = {
+                'blue': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800', chip: 'bg-blue-500' },
+                'red': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800', chip: 'bg-red-500' },
+                'orange': { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800', chip: 'bg-orange-500' },
+                'amber': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800', chip: 'bg-amber-500' },
+                'yellow': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-200 dark:border-yellow-800', chip: 'bg-yellow-500' },
+                'purple': { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800', chip: 'bg-purple-500' },
+                'indigo': { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800', chip: 'bg-indigo-500' },
+                'teal': { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800', chip: 'bg-teal-500' },
+                'rose': { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800', chip: 'bg-rose-500' }
+            };
+            return colors[color] || colors['blue'];
+        }
+
+        function createQuickActionCard(pattern) {
+            const colors = getColorClasses(pattern.color);
+            const issueCount = pattern.issues.length;
+            const hasFixCode = pattern.issues.some(i => i.fix);
+
+            return `
+                <div class="quick-action-card border ${colors.border} rounded-xl overflow-hidden">
+                    <!-- Header - Clickable to expand -->
+                    <div class="flex items-center justify-between p-4 ${colors.bg} cursor-pointer" onclick="toggleQuickAction('${pattern.id}')">
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-8 h-8 rounded-lg ${colors.chip} text-white">
+                                ${pattern.icon}
+                            </div>
+                            <div>
+                                <h3 class="font-semibold ${colors.text}">${pattern.name}</h3>
+                                <p class="text-xs text-slate-500 dark:text-slate-400">${pattern.description}</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}">
+                                ${issueCount} issue${issueCount !== 1 ? 's' : ''}
+                            </span>
+                            <svg id="chevron-${pattern.id}" class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Expandable Content -->
+                    <div id="quick-action-content-${pattern.id}" class="hidden border-t ${colors.border}">
+                        <!-- Documentation Links -->
+                        <div class="p-4 bg-slate-50 dark:bg-slate-900/50 border-b ${colors.border}">
+                            <h4 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Documentation</h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${pattern.docs.map(doc => `
+                                    <a href="${doc.url}" target="_blank" rel="noopener noreferrer"
+                                       class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                                        <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
+                                        </svg>
+                                        ${doc.title}
+                                    </a>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <!-- Related Issues and Fixes -->
+                        <div class="p-4">
+                            <h4 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Related Issues & Fixes</h4>
+                            <div class="space-y-3">
+                                ${pattern.issues.map((issue, idx) => createQuickActionIssue(issue, pattern.id, idx)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function createQuickActionIssue(issue, patternId, idx) {
+            const hasFix = issue.fix;
+            const agentBadge = issue.agent_name ?
+                `<span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400">${formatAgentName(issue.agent_name)}</span>` : '';
+
+            return `
+                <div class="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
+                    <div class="flex items-start justify-between gap-2 mb-2">
+                        <p class="text-sm text-slate-700 dark:text-slate-300">${escapeHtml(issue.description)}</p>
+                        ${agentBadge}
+                    </div>
+                    ${hasFix ? `
+                        <div class="mt-2">
+                            <button onclick="toggleQuickActionFix('${patternId}-${idx}')"
+                                    class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center">
+                                <svg id="fix-chevron-${patternId}-${idx}" class="w-3 h-3 mr-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                                </svg>
+                                View Fix Implementation
+                            </button>
+                            <div id="quick-action-fix-${patternId}-${idx}" class="hidden mt-2">
+                                <div class="relative">
+                                    <pre class="!mt-0 rounded-lg overflow-hidden text-xs"><code class="language-python">${escapeHtml(issue.fix)}</code></pre>
+                                    <button onclick="copyQuickActionFix('${patternId}-${idx}')"
+                                            class="absolute top-2 right-2 p-1.5 rounded-md bg-slate-700/80 text-slate-300 hover:bg-slate-600 transition-colors">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        function toggleQuickAction(patternId) {
+            const content = document.getElementById(`quick-action-content-${patternId}`);
+            const chevron = document.getElementById(`chevron-${patternId}`);
+
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden');
+                chevron.style.transform = 'rotate(180deg)';
+                // Highlight code if visible
+                Prism.highlightAllUnder(content);
+            } else {
+                content.classList.add('hidden');
+                chevron.style.transform = '';
+            }
+        }
+
+        function toggleQuickActionFix(fixId) {
+            const fixContent = document.getElementById(`quick-action-fix-${fixId}`);
+            const chevron = document.getElementById(`fix-chevron-${fixId}`);
+
+            if (fixContent.classList.contains('hidden')) {
+                fixContent.classList.remove('hidden');
+                chevron.style.transform = 'rotate(90deg)';
+                Prism.highlightAllUnder(fixContent);
+            } else {
+                fixContent.classList.add('hidden');
+                chevron.style.transform = '';
+            }
+        }
+
+        function copyQuickActionFix(fixId) {
+            const codeEl = document.querySelector(`#quick-action-fix-${fixId} code`);
+            if (!codeEl) return;
+
+            navigator.clipboard.writeText(codeEl.textContent).then(() => {
+                showToast('Fix copied to clipboard', 'success');
+            }).catch(() => {
+                showToast('Failed to copy', 'error');
             });
         }
 
