@@ -5,5 +5,12 @@ and characteristics of a codebase - its "DNA fingerprint".
 """
 
 from src.dna.extractor import DNAExtractor, CodebaseFingerprint
+from src.dna.analyzer import DNAAnalyzer, Anomaly, AnomalySeverity
 
-__all__ = ["DNAExtractor", "CodebaseFingerprint"]
+__all__ = [
+    "DNAExtractor",
+    "CodebaseFingerprint",
+    "DNAAnalyzer",
+    "Anomaly",
+    "AnomalySeverity",
+]
