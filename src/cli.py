@@ -186,7 +186,8 @@ def cli():
               default=None, help="Exit with code 1 if issues at or above this severity are found (for CI)")
 @click.option("--diff-only", is_flag=True, help="Only review changed lines vs HEAD (requires git repo)")
 @click.option("--redteam", is_flag=True, help="Enable RedTeam mode: generate exploits and auto-patches for vulnerabilities")
-def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool, min_severity: Optional[str], fail_on: Optional[str], diff_only: bool, redteam: bool):
+@click.option("--predict", is_flag=True, help="Enable prediction market: agents place bets on code quality outcomes")
+def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool, min_severity: Optional[str], fail_on: Optional[str], diff_only: bool, redteam: bool, predict: bool):
     """Run a full debate review on code.
 
     Review a file:
@@ -220,6 +221,9 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
 
     RedTeam mode (generate exploits and patches):
         consensys review file.py --redteam
+
+    Prediction market (agents bet on code quality):
+        consensys review file.py --predict
     """
     # Get code from file or --code option
     diff_context_info: Optional[DiffContext] = None
@@ -487,6 +491,124 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
                     except Exception as e:
                         console.print(f"[red]Error analyzing {vuln_type}: {e}[/red]")
                         continue
+
+        # Prediction market: agents place bets on code quality
+        if predict and consensus_result:
+            console.print()
+            console.print("[bold blue]━━━ Prediction Market ━━━[/bold blue]")
+            console.print("[dim]Agents are placing bets on code quality outcomes[/dim]")
+            console.print()
+
+            from src.predictions.market import PredictionMarket
+            from src.predictions.models import PredictionType
+
+            market = PredictionMarket()
+            file_path_for_prediction = str(file) if file else "inline_code"
+
+            # Determine prediction type based on review results
+            # Look at consensus decision and severity of issues
+            has_critical = any(
+                issue.get("severity", "").upper() == "CRITICAL"
+                for rev in orchestrator.reviews
+                for issue in rev.issues
+            )
+            has_high = any(
+                issue.get("severity", "").upper() == "HIGH"
+                for rev in orchestrator.reviews
+                for issue in rev.issues
+            )
+            has_security = any(
+                "security" in issue.get("description", "").lower() or
+                "vulnerab" in issue.get("description", "").lower() or
+                "injection" in issue.get("description", "").lower()
+                for rev in orchestrator.reviews
+                for issue in rev.issues
+            )
+
+            # Calculate base confidence from consensus
+            total_votes = consensus_result.total_votes
+            approve_votes = consensus_result.vote_counts.get("APPROVE", 0)
+            base_confidence = approve_votes / total_votes if total_votes > 0 else 0.5
+
+            # Create prediction based on code analysis
+            if has_security:
+                pred_type = PredictionType.SECURITY_INCIDENT
+                confidence = 0.8 if has_critical else 0.6
+            elif has_critical:
+                pred_type = PredictionType.BUG_WILL_OCCUR
+                confidence = 0.75
+            elif has_high:
+                pred_type = PredictionType.MAINTENANCE_PROBLEM
+                confidence = 0.6
+            elif consensus_result.decision == "APPROVE":
+                pred_type = PredictionType.CODE_IS_SAFE
+                confidence = base_confidence
+            else:
+                pred_type = PredictionType.BUG_WILL_OCCUR
+                confidence = 0.5
+
+            # Create the prediction
+            prediction = market.create_prediction(
+                code=code_content,
+                file_path=file_path_for_prediction,
+                prediction_type=pred_type,
+                confidence=confidence
+            )
+
+            console.print(f"[bold]Prediction Created:[/bold] {prediction.prediction_id[:8]}...")
+            console.print(f"  Type: {pred_type.value}")
+            console.print(f"  Confidence: {confidence:.0%}")
+            console.print()
+
+            # Each reviewing agent places a bet
+            bets_table = Table(title="Agent Bets", show_header=True)
+            bets_table.add_column("Agent", style="cyan")
+            bets_table.add_column("Tokens", justify="right")
+            bets_table.add_column("Prediction", style="yellow")
+            bets_table.add_column("Voting Weight", justify="right", style="green")
+
+            for rev in orchestrator.reviews:
+                agent_name = rev.agent_name
+
+                # Get agent's voting weight
+                voting_weight = market.get_voting_weight(agent_name)
+
+                # Calculate bet amount based on agent's confidence and review severity
+                agent_issues = len(rev.issues)
+                agent_confidence = 1.0 - (min(agent_issues, 5) * 0.1)  # Fewer issues = higher confidence
+
+                # Bet 50-200 tokens based on confidence
+                bet_tokens = int(50 + (agent_confidence * 150))
+
+                try:
+                    # Agent decides their prediction based on their review
+                    agent_pred = PredictionType.CODE_IS_SAFE if agent_issues == 0 else pred_type
+                    bet = market.place_bet(
+                        agent=agent_name,
+                        code=code_content,
+                        prediction=prediction,
+                        tokens=bet_tokens
+                    )
+
+                    bets_table.add_row(
+                        agent_name,
+                        str(bet_tokens),
+                        agent_pred.value,
+                        f"{voting_weight:.2f}x"
+                    )
+                except ValueError as e:
+                    bets_table.add_row(
+                        agent_name,
+                        "-",
+                        f"[red]Error: {e}[/red]",
+                        f"{voting_weight:.2f}x"
+                    )
+
+            console.print(bets_table)
+            console.print()
+            console.print(f"[dim]Prediction ID: {prediction.prediction_id}[/dim]")
+            console.print(f"[dim]Resolve with: consensys predict resolve {prediction.prediction_id[:8]} --outcome safe[/dim]")
+            console.print(f"[dim]View leaderboard: consensys predict leaderboard[/dim]")
 
         # Auto-fix if requested
         if fix and consensus_result:
@@ -2440,6 +2562,254 @@ def web_server(host: str, port: int):
 
     from src.web.app import app
     uvicorn.run(app, host=host, port=port)
+
+
+@cli.group()
+def predict():
+    """Prediction market for code quality bets.
+
+    Agents place bets on code quality predictions and earn/lose tokens
+    based on whether their predictions are correct.
+
+    \b
+    Commands:
+    - list: Show open predictions awaiting resolution
+    - resolve: Resolve a prediction with an outcome
+    - leaderboard: Show agent accuracy rankings and voting weights
+    """
+    pass
+
+
+@predict.command("list")
+@click.option("--limit", "-n", default=20, help="Number of predictions to show")
+@click.option("--all", "show_all", is_flag=True, help="Show resolved predictions too")
+def predict_list(limit: int, show_all: bool):
+    """Show open predictions awaiting resolution.
+
+    Lists predictions that agents have bet on but haven't been resolved yet.
+    Use 'consensys predict resolve <id> --outcome <safe|incident>' to resolve.
+    """
+    from src.predictions.market import PredictionMarket
+    from src.predictions.storage import PredictionStorage
+
+    storage = PredictionStorage()
+    market = PredictionMarket(storage)
+
+    # Get predictions
+    if show_all:
+        predictions = storage.list_predictions(resolved=None, limit=limit)
+    else:
+        predictions = storage.list_predictions(resolved=False, limit=limit)
+
+    if not predictions:
+        console.print("[yellow]No predictions found.[/yellow]")
+        console.print("Run 'consensys review <file> --predict' to create predictions.")
+        return
+
+    # Build table
+    table = Table(title="Predictions" + (" (including resolved)" if show_all else " (open)"), show_header=True)
+    table.add_column("ID", style="cyan", width=10)
+    table.add_column("File", style="white")
+    table.add_column("Type", style="yellow")
+    table.add_column("Confidence", justify="right")
+    table.add_column("Bets", justify="right")
+    table.add_column("Status", style="green")
+    table.add_column("Created", style="dim")
+
+    for pred in predictions:
+        # Get bets for this prediction
+        bets = storage.get_bets_for_prediction(pred.prediction_id)
+        bet_count = len(bets)
+
+        # Check if resolved
+        outcome = storage.get_outcome(pred.prediction_id)
+        status = outcome.actual_result.value if outcome else "OPEN"
+        status_style = "green" if status == "SAFE" else "red" if status == "INCIDENT" else "yellow"
+
+        # Truncate file path
+        file_display = pred.file_path
+        if len(file_display) > 30:
+            file_display = "..." + file_display[-27:]
+
+        table.add_row(
+            pred.prediction_id[:8] + "...",
+            file_display,
+            pred.prediction_type.value,
+            f"{pred.confidence:.0%}",
+            str(bet_count),
+            f"[{status_style}]{status}[/{status_style}]",
+            pred.timestamp.strftime("%Y-%m-%d %H:%M") if pred.timestamp else "-"
+        )
+
+    console.print(table)
+
+    # Show stats
+    stats = storage.get_stats()
+    console.print()
+    console.print(f"[dim]Total: {stats['total_predictions']} predictions, "
+                  f"{stats['open_predictions']} open, "
+                  f"{stats['total_bets']} bets placed[/dim]")
+
+
+@predict.command("resolve")
+@click.argument("prediction_id")
+@click.option("--outcome", "-o", type=click.Choice(["safe", "incident"]), required=True,
+              help="The actual outcome: 'safe' if no issues occurred, 'incident' if issues occurred")
+@click.option("--link", "-l", help="Optional link to incident report or bug tracker")
+def predict_resolve(prediction_id: str, outcome: str, link: str):
+    """Resolve a prediction and update agent scores.
+
+    After code has been in production or tested, resolve the prediction
+    to let the system know whether issues occurred.
+
+    \b
+    Examples:
+        consensys predict resolve abc12345 --outcome safe
+        consensys predict resolve abc12345 --outcome incident --link https://github.com/issues/123
+    """
+    from src.predictions.market import PredictionMarket
+    from src.predictions.models import OutcomeResult
+
+    market = PredictionMarket()
+
+    # Convert outcome string to enum
+    outcome_result = OutcomeResult.SAFE if outcome == "safe" else OutcomeResult.INCIDENT
+
+    # Find the prediction (support partial ID matching)
+    prediction = market.get_prediction(prediction_id)
+
+    if not prediction:
+        # Try partial match
+        from src.predictions.storage import PredictionStorage
+        storage = PredictionStorage()
+        all_preds = storage.list_predictions(resolved=False, limit=100)
+        matches = [p for p in all_preds if p.prediction_id.startswith(prediction_id)]
+
+        if len(matches) == 1:
+            prediction = matches[0]
+            prediction_id = prediction.prediction_id
+        elif len(matches) > 1:
+            console.print(f"[yellow]Multiple predictions match '{prediction_id}':[/yellow]")
+            for p in matches[:5]:
+                console.print(f"  {p.prediction_id[:12]}... - {p.file_path}")
+            console.print("[dim]Please provide a longer ID prefix[/dim]")
+            return
+        else:
+            console.print(f"[red]Prediction not found: {prediction_id}[/red]")
+            console.print("Run 'consensys predict list' to see open predictions.")
+            return
+
+    try:
+        # Resolve the prediction
+        score_updates = market.resolve(prediction_id, outcome_result, link)
+
+        console.print(f"[bold green]Prediction resolved: {outcome.upper()}[/bold green]")
+        console.print()
+
+        if score_updates:
+            # Show score updates
+            table = Table(title="Agent Score Updates", show_header=True)
+            table.add_column("Agent", style="cyan")
+            table.add_column("Result", style="bold")
+            table.add_column("Tokens Before", justify="right")
+            table.add_column("Change", justify="right")
+            table.add_column("Tokens After", justify="right")
+
+            for update in score_updates:
+                result_style = "green" if update.won else "red"
+                change_str = f"+{update.tokens_change}" if update.tokens_change > 0 else str(update.tokens_change)
+                change_style = "green" if update.tokens_change > 0 else "red"
+
+                table.add_row(
+                    update.agent_name,
+                    f"[{result_style}]{'WON' if update.won else 'LOST'}[/{result_style}]",
+                    str(update.tokens_before),
+                    f"[{change_style}]{change_str}[/{change_style}]",
+                    str(update.tokens_after)
+                )
+
+            console.print(table)
+        else:
+            console.print("[yellow]No bets were placed on this prediction.[/yellow]")
+
+        if link:
+            console.print()
+            console.print(f"[dim]Incident link: {link}[/dim]")
+
+    except ValueError as e:
+        console.print(f"[red]Error: {e}[/red]")
+
+
+@predict.command("leaderboard")
+@click.option("--limit", "-n", default=10, help="Number of agents to show")
+def predict_leaderboard(limit: int):
+    """Show agent accuracy rankings and voting weights.
+
+    Displays agents ranked by their prediction accuracy, along with
+    their token balance and calculated voting weight.
+
+    Voting weight is based on historical accuracy:
+    - New agents (< 5 bets): 1.0x base weight
+    - Experienced agents: 0.5 + accuracy + token bonus
+    - Maximum weight: 2.0x
+    """
+    from src.predictions.market import PredictionMarket
+
+    market = PredictionMarket()
+    leaderboard = market.get_leaderboard(limit)
+
+    if not leaderboard:
+        console.print("[yellow]No agents have placed bets yet.[/yellow]")
+        console.print("Run 'consensys review <file> --predict' to start the prediction market.")
+        return
+
+    # Build table
+    table = Table(title="Agent Prediction Leaderboard", show_header=True)
+    table.add_column("Rank", justify="right", style="bold")
+    table.add_column("Agent", style="cyan")
+    table.add_column("Accuracy", justify="right", style="green")
+    table.add_column("W/L", justify="center")
+    table.add_column("Total Bets", justify="right")
+    table.add_column("Tokens", justify="right", style="yellow")
+    table.add_column("Voting Weight", justify="right", style="magenta")
+
+    for rank, score in enumerate(leaderboard, 1):
+        # Calculate voting weight
+        voting_weight = market.get_voting_weight(score.agent_name)
+
+        # Accuracy display
+        accuracy_str = f"{score.accuracy:.0%}" if score.total_bets > 0 else "-"
+
+        # W/L display
+        wl_str = f"{score.wins}/{score.losses}"
+
+        # Token color based on gain/loss from starting
+        token_change = score.tokens - 1000
+        if token_change > 0:
+            token_display = f"[green]{score.tokens}[/green]"
+        elif token_change < 0:
+            token_display = f"[red]{score.tokens}[/red]"
+        else:
+            token_display = str(score.tokens)
+
+        table.add_row(
+            str(rank),
+            score.agent_name,
+            accuracy_str,
+            wl_str,
+            str(score.total_bets),
+            token_display,
+            f"{voting_weight:.2f}x"
+        )
+
+    console.print(table)
+
+    # Show voting weight explanation
+    console.print()
+    console.print("[dim]Voting Weight Formula:[/dim]")
+    console.print("[dim]  Base: 0.5 + accuracy (for agents with 5+ bets)[/dim]")
+    console.print("[dim]  Bonus: up to +0.5 for high token balance[/dim]")
+    console.print("[dim]  Max: 2.0x[/dim]")
 
 
 def main():
