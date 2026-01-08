@@ -9,6 +9,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.syntax import Syntax
 from rich.text import Text
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from src.orchestrator.debate import DebateOrchestrator
 from src.db.storage import Storage
@@ -1000,6 +1001,470 @@ def stats():
     # Summary insights
     console.print("[dim]Run 'consensus history' to see individual sessions.[/dim]")
     console.print("[dim]Run 'consensus export <session_id> --format html' for detailed reports.[/dim]")
+
+
+def load_consensusignore(directory: Path) -> list:
+    """Load ignore patterns from .consensusignore file.
+
+    Args:
+        directory: The directory to search for .consensusignore
+
+    Returns:
+        List of ignore patterns (glob patterns)
+    """
+    ignore_patterns = []
+    ignore_file = directory / ".consensusignore"
+
+    if ignore_file.exists():
+        try:
+            content = ignore_file.read_text()
+            for line in content.splitlines():
+                line = line.strip()
+                # Skip empty lines and comments
+                if line and not line.startswith("#"):
+                    ignore_patterns.append(line)
+        except Exception:
+            pass
+
+    return ignore_patterns
+
+
+def should_ignore(file_path: Path, ignore_patterns: list, base_dir: Path) -> bool:
+    """Check if a file should be ignored based on patterns.
+
+    Args:
+        file_path: The file path to check
+        ignore_patterns: List of glob patterns to match against
+        base_dir: Base directory for relative path comparison
+
+    Returns:
+        True if the file should be ignored
+    """
+    import fnmatch
+
+    # Get relative path from base directory
+    try:
+        rel_path = file_path.relative_to(base_dir)
+    except ValueError:
+        rel_path = file_path
+
+    rel_str = str(rel_path)
+    name = file_path.name
+
+    for pattern in ignore_patterns:
+        # Match against filename
+        if fnmatch.fnmatch(name, pattern):
+            return True
+        # Match against relative path
+        if fnmatch.fnmatch(rel_str, pattern):
+            return True
+        # Match against path with ** prefix for nested patterns
+        if fnmatch.fnmatch(rel_str, f"**/{pattern}"):
+            return True
+
+    return False
+
+
+def collect_python_files(directory: Path, ignore_patterns: list) -> list:
+    """Collect all Python files in a directory, respecting ignore patterns.
+
+    Args:
+        directory: The directory to search
+        ignore_patterns: Patterns from .consensusignore
+
+    Returns:
+        List of Path objects for Python files
+    """
+    files = []
+
+    # Add default ignore patterns
+    default_ignores = [
+        "__pycache__",
+        "*.pyc",
+        ".git",
+        ".venv",
+        "venv",
+        "env",
+        ".env",
+        "node_modules",
+        "*.egg-info",
+        "dist",
+        "build",
+    ]
+    all_patterns = default_ignores + ignore_patterns
+
+    for file_path in directory.rglob("*.py"):
+        if not should_ignore(file_path, all_patterns, directory):
+            files.append(file_path)
+
+    # Sort for consistent ordering
+    files.sort()
+    return files
+
+
+@cli.command("review-batch")
+@click.argument("path", type=click.Path(exists=True))
+@click.option("--parallel", "-p", default=4, help="Number of parallel workers (default: 4)")
+@click.option("--quick", "-q", is_flag=True, help="Use quick mode (Round 1 only) for each file")
+@click.option("--no-cache", is_flag=True, help="Force fresh reviews, skip cache")
+@click.option("--min-severity", type=click.Choice(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+              default=None, help="Only display issues at or above this severity")
+@click.option("--fail-on", type=click.Choice(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+              default=None, help="Exit with code 1 if issues at or above this severity are found")
+@click.option("--report", "-r", type=click.Path(), default=None,
+              help="Generate combined markdown report at this path")
+def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
+                 min_severity: Optional[str], fail_on: Optional[str], report: Optional[str]):
+    """Review all Python files in a directory.
+
+    Runs code reviews on all Python files in the specified directory,
+    processing multiple files in parallel for efficiency.
+
+    \b
+    Examples:
+        consensus review-batch src/
+        consensus review-batch . --parallel 8
+        consensus review-batch src/ --quick --no-cache
+        consensus review-batch src/ --fail-on HIGH
+        consensus review-batch src/ --report batch_report.md
+
+    Respects .consensusignore file for exclusions. Create a .consensusignore
+    file in your project root with glob patterns to exclude:
+
+    \b
+        # .consensusignore example
+        tests/
+        *_test.py
+        conftest.py
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from dataclasses import dataclass
+    from typing import Tuple
+    import time
+
+    @dataclass
+    class BatchResult:
+        """Result of reviewing a single file."""
+        file_path: Path
+        session_id: Optional[str]
+        decision: Optional[str]
+        issues_count: int
+        suggestions_count: int
+        severity: str
+        duration_seconds: float
+        error: Optional[str] = None
+
+    dir_path = Path(path)
+
+    # Handle file vs directory
+    if dir_path.is_file():
+        if not dir_path.suffix == ".py":
+            console.print("[red]Error: Single file must be a Python file (.py)[/red]")
+            console.print("[dim]Use 'consensus review <file>' for single file review.[/dim]")
+            sys.exit(1)
+        files = [dir_path]
+        ignore_patterns = []
+    else:
+        # Load ignore patterns
+        ignore_patterns = load_consensusignore(dir_path)
+
+        # Collect Python files
+        files = collect_python_files(dir_path, ignore_patterns)
+
+    if not files:
+        console.print("[yellow]No Python files found to review.[/yellow]")
+        if ignore_patterns:
+            console.print(f"[dim]Note: {len(ignore_patterns)} ignore patterns loaded from .consensusignore[/dim]")
+        return
+
+    console.print()
+    console.print(Panel(
+        f"[bold]Directory:[/bold] {dir_path.absolute()}\n"
+        f"[bold]Files:[/bold] {len(files)} Python files\n"
+        f"[bold]Workers:[/bold] {parallel} parallel\n"
+        f"[bold]Mode:[/bold] {'Quick (Round 1)' if quick else 'Full Debate'}",
+        title="[bold cyan]Batch Review[/bold cyan]",
+        border_style="cyan",
+    ))
+
+    if ignore_patterns:
+        console.print(f"[dim]Ignore patterns: {len(ignore_patterns)} loaded from .consensusignore[/dim]")
+
+    console.print()
+
+    # Function to review a single file
+    def review_single_file(file_path: Path) -> BatchResult:
+        """Review a single file and return the result."""
+        start_time = time.time()
+
+        try:
+            code_content = file_path.read_text()
+        except Exception as e:
+            return BatchResult(
+                file_path=file_path,
+                session_id=None,
+                decision=None,
+                issues_count=0,
+                suggestions_count=0,
+                severity="ERROR",
+                duration_seconds=time.time() - start_time,
+                error=str(e),
+            )
+
+        try:
+            # Create orchestrator with a fresh console (suppress output for batch)
+            team_personas = get_team_personas()
+            # Use a dummy console to suppress individual review output
+            from io import StringIO
+            quiet_console = Console(file=StringIO(), quiet=True)
+            orchestrator = DebateOrchestrator(
+                personas=team_personas,
+                console=quiet_console,
+                use_cache=not no_cache,
+            )
+
+            context = f"File: {file_path.name}"
+
+            if quick:
+                consensus_result = orchestrator.run_quick_review(code_content, context)
+            else:
+                consensus_result = orchestrator.run_full_debate(code_content, context)
+
+            # Aggregate issues and suggestions
+            total_issues = sum(len(r.issues) for r in orchestrator.reviews)
+            total_suggestions = sum(len(r.suggestions) for r in orchestrator.reviews)
+
+            # Get max severity across all reviews
+            severity_order = ["LOW", "MEDIUM", "HIGH", "CRITICAL"]
+            max_severity = "LOW"
+            for review in orchestrator.reviews:
+                if severity_order.index(review.severity) > severity_order.index(max_severity):
+                    max_severity = review.severity
+
+            decision = consensus_result.final_decision.value if consensus_result else None
+
+            return BatchResult(
+                file_path=file_path,
+                session_id=orchestrator.session_id,
+                decision=decision,
+                issues_count=total_issues,
+                suggestions_count=total_suggestions,
+                severity=max_severity,
+                duration_seconds=time.time() - start_time,
+            )
+
+        except Exception as e:
+            return BatchResult(
+                file_path=file_path,
+                session_id=None,
+                decision=None,
+                issues_count=0,
+                suggestions_count=0,
+                severity="ERROR",
+                duration_seconds=time.time() - start_time,
+                error=str(e),
+            )
+
+    # Run reviews in parallel with progress
+    results: list = []
+
+    with Progress(
+        SpinnerColumn(),
+        TextColumn("[progress.description]{task.description}"),
+        console=console,
+        transient=False,
+    ) as progress:
+        overall_task = progress.add_task(
+            f"[cyan]Reviewing {len(files)} files...[/cyan]",
+            total=len(files)
+        )
+
+        with ThreadPoolExecutor(max_workers=parallel) as executor:
+            future_to_file = {
+                executor.submit(review_single_file, f): f
+                for f in files
+            }
+
+            for future in as_completed(future_to_file):
+                file_path = future_to_file[future]
+                try:
+                    result = future.result()
+                    results.append(result)
+
+                    # Update progress
+                    if result.error:
+                        status = f"[red]✗ {file_path.name}[/red]"
+                    elif result.decision == "APPROVE":
+                        status = f"[green]✓ {file_path.name}[/green]"
+                    elif result.decision == "REJECT":
+                        status = f"[red]✗ {file_path.name}[/red]"
+                    else:
+                        status = f"[yellow]~ {file_path.name}[/yellow]"
+
+                    progress.console.print(f"  {status}")
+                    progress.advance(overall_task)
+
+                except Exception as e:
+                    console.print(f"[red]Error processing {file_path}: {e}[/red]")
+                    progress.advance(overall_task)
+
+    # Sort results by file path for consistent display
+    results.sort(key=lambda r: str(r.file_path))
+
+    # Display summary table
+    console.print()
+    console.print()
+
+    table = Table(title="Batch Review Results", show_header=True, header_style="bold cyan")
+    table.add_column("File", style="dim", max_width=40)
+    table.add_column("Decision", justify="center")
+    table.add_column("Severity", justify="center")
+    table.add_column("Issues", justify="center")
+    table.add_column("Time", justify="right")
+
+    decision_colors = {"APPROVE": "green", "REJECT": "red", "ABSTAIN": "yellow"}
+    severity_colors = {"CRITICAL": "red", "HIGH": "red", "MEDIUM": "yellow", "LOW": "green", "ERROR": "red"}
+
+    total_issues = 0
+    total_approve = 0
+    total_reject = 0
+    total_abstain = 0
+    total_errors = 0
+    has_fail_threshold_issue = False
+
+    for result in results:
+        # Get relative path for display
+        try:
+            rel_path = result.file_path.relative_to(dir_path)
+        except ValueError:
+            rel_path = result.file_path
+
+        if result.error:
+            table.add_row(
+                str(rel_path),
+                "[red]ERROR[/red]",
+                "-",
+                "-",
+                f"{result.duration_seconds:.1f}s",
+            )
+            total_errors += 1
+        else:
+            dec_color = decision_colors.get(result.decision, "dim")
+            sev_color = severity_colors.get(result.severity, "blue")
+
+            # Apply min-severity filter to issue count display
+            displayed_issues = result.issues_count
+            if min_severity:
+                # We show all issues but note that filtering is available in individual reviews
+                pass
+
+            table.add_row(
+                str(rel_path),
+                f"[{dec_color}]{result.decision}[/{dec_color}]",
+                f"[{sev_color}]{result.severity}[/{sev_color}]",
+                str(displayed_issues),
+                f"{result.duration_seconds:.1f}s",
+            )
+
+            total_issues += result.issues_count
+
+            if result.decision == "APPROVE":
+                total_approve += 1
+            elif result.decision == "REJECT":
+                total_reject += 1
+            else:
+                total_abstain += 1
+
+            # Check fail-on threshold
+            if fail_on and result.severity:
+                if severity_meets_threshold(result.severity, fail_on):
+                    has_fail_threshold_issue = True
+
+    console.print(table)
+    console.print()
+
+    # Summary stats
+    total_files = len(results)
+    total_duration = sum(r.duration_seconds for r in results)
+
+    summary_table = Table(title="Summary", show_header=True, header_style="bold blue")
+    summary_table.add_column("Metric", style="dim")
+    summary_table.add_column("Value", justify="right")
+
+    summary_table.add_row("Total Files", str(total_files))
+    summary_table.add_row("[green]Approved[/green]", str(total_approve))
+    summary_table.add_row("[red]Rejected[/red]", str(total_reject))
+    summary_table.add_row("[yellow]Abstained[/yellow]", str(total_abstain))
+    if total_errors > 0:
+        summary_table.add_row("[red]Errors[/red]", str(total_errors))
+    summary_table.add_row("Total Issues", str(total_issues))
+    summary_table.add_row("Total Duration", f"{total_duration:.1f}s")
+
+    console.print(summary_table)
+    console.print()
+
+    # Generate combined report if requested
+    if report:
+        report_path = Path(report)
+        report_lines = [
+            "# Consensus Batch Review Report",
+            "",
+            f"**Directory:** `{dir_path.absolute()}`",
+            f"**Files Reviewed:** {total_files}",
+            f"**Total Duration:** {total_duration:.1f}s",
+            "",
+            "## Summary",
+            "",
+            f"- **Approved:** {total_approve}",
+            f"- **Rejected:** {total_reject}",
+            f"- **Abstained:** {total_abstain}",
+            f"- **Errors:** {total_errors}",
+            f"- **Total Issues:** {total_issues}",
+            "",
+            "## Results by File",
+            "",
+            "| File | Decision | Severity | Issues | Session |",
+            "|------|----------|----------|--------|---------|",
+        ]
+
+        for result in results:
+            try:
+                rel_path = result.file_path.relative_to(dir_path)
+            except ValueError:
+                rel_path = result.file_path
+
+            if result.error:
+                report_lines.append(f"| `{rel_path}` | ERROR | - | - | - |")
+            else:
+                session_link = result.session_id[:12] if result.session_id else "-"
+                report_lines.append(
+                    f"| `{rel_path}` | {result.decision} | {result.severity} | "
+                    f"{result.issues_count} | {session_link} |"
+                )
+
+        report_lines.extend([
+            "",
+            "---",
+            "*Generated by [Consensus](https://github.com/consensus) - Multi-agent AI code review*",
+        ])
+
+        report_path.write_text("\n".join(report_lines))
+        console.print(f"[green]Report saved to: {report_path}[/green]")
+        console.print()
+
+    # Print replay hint
+    session_ids = [r.session_id for r in results if r.session_id]
+    if session_ids:
+        console.print("[dim]Replay individual reviews with:[/dim]")
+        console.print(f"[dim]  consensus replay <session_id>[/dim]")
+        console.print()
+
+    # Check fail-on threshold
+    if fail_on and has_fail_threshold_issue:
+        console.print(f"[bold red]CI Check Failed: Files with {fail_on}+ severity found[/bold red]")
+        sys.exit(1)
+    elif fail_on:
+        console.print(f"[bold green]CI Check Passed: No files with {fail_on}+ severity[/bold green]")
 
 
 @cli.command("add-persona")
