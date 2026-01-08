@@ -443,6 +443,265 @@ print(f"Decision: {consensus.final_decision}")
 print(f"Key Issues: {consensus.key_issues}")
 ```
 
+## Web UI
+
+Consensus includes a web-based interface for code reviews with real-time streaming.
+
+### Starting the Server
+
+```bash
+# Start web server on default port 8000
+consensus web
+
+# Custom host and port
+consensus web --host 0.0.0.0 --port 3000
+```
+
+Open `http://localhost:8000` in your browser.
+
+### Web API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/health` | GET | Health check - returns `{"status": "ok"}` |
+| `/api/review` | POST | Submit code for review |
+| `/api/sessions` | GET | List past review sessions |
+| `/api/sessions/{id}` | GET | Get full session details |
+| `/ws/review` | WebSocket | Streaming reviews with live updates |
+
+### POST /api/review
+
+Submit code for AI review:
+
+```bash
+curl -X POST http://localhost:8000/api/review \
+  -H "Content-Type: application/json" \
+  -d '{
+    "code": "def foo(): eval(input())",
+    "context": "User input handler",
+    "language": "python",
+    "quick": false
+  }'
+```
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `code` | string | Yes | Code to review |
+| `context` | string | No | Additional context for reviewers |
+| `language` | string | No | Programming language hint |
+| `quick` | boolean | No | Use quick mode (default: false) |
+
+**Response:**
+
+```json
+{
+  "session_id": "abc123...",
+  "decision": "REJECT",
+  "reviews": [
+    {
+      "agent_name": "SecurityExpert",
+      "issues": ["eval() with user input is dangerous"],
+      "suggestions": ["Use ast.literal_eval() for safe parsing"],
+      "severity": "CRITICAL",
+      "confidence": 0.95,
+      "summary": "Critical security vulnerability detected"
+    }
+  ],
+  "consensus": {
+    "decision": "REJECT",
+    "vote_counts": {"APPROVE": 0, "REJECT": 4, "ABSTAIN": 0},
+    "key_issues": ["Code injection vulnerability via eval()"],
+    "accepted_suggestions": ["Replace eval() with safe alternative"]
+  },
+  "vote_counts": {"APPROVE": 0, "REJECT": 4, "ABSTAIN": 0}
+}
+```
+
+### GET /api/sessions
+
+List past review sessions:
+
+```bash
+curl http://localhost:8000/api/sessions?limit=10
+```
+
+### GET /api/sessions/{id}
+
+Get full details of a session:
+
+```bash
+curl http://localhost:8000/api/sessions/abc123
+```
+
+### WebSocket /ws/review
+
+For real-time streaming reviews, connect via WebSocket:
+
+```javascript
+const ws = new WebSocket('ws://localhost:8000/ws/review');
+
+ws.onopen = () => {
+  ws.send(JSON.stringify({
+    type: 'review',
+    code: 'def foo(): pass',
+    context: 'Example function',
+    quick: false
+  }));
+};
+
+ws.onmessage = (event) => {
+  const message = JSON.parse(event.data);
+  // message.type: 'status' | 'review' | 'response' | 'vote' | 'consensus' | 'complete' | 'error'
+  console.log(message.type, message.data);
+};
+```
+
+## VS Code Extension
+
+Review code directly in your editor with the Consensus VS Code extension.
+
+### Installation
+
+```bash
+# Clone and build from source
+cd vscode-extension
+npm install
+npm run package
+
+# Install the generated .vsix file in VS Code
+# Extensions > ... > Install from VSIX...
+```
+
+### Prerequisites
+
+The extension requires the Consensus web server running:
+
+```bash
+consensus web  # Starts on http://localhost:8000
+```
+
+### Features
+
+- **Review Current File**: `Ctrl+Shift+R` (Mac: `Cmd+Shift+R`)
+- **Review Selection**: `Ctrl+Shift+Alt+R` (Mac: `Cmd+Shift+Alt+R`)
+- **Diagnostic Integration**: Issues appear in Problems panel and as editor squiggles
+- **Code Actions**: Quick fix suggestions via lightbulb menu
+- **Status Bar**: Real-time review status indicator
+- **Auto-Review on Save**: Configurable automatic reviews
+
+### Extension Settings
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `consensus.apiEndpoint` | URL of Consensus web API | `http://localhost:8000` |
+| `consensus.autoReviewOnSave` | Review files automatically on save | `false` |
+
+### Status Bar Icons
+
+| Icon | Meaning |
+|------|---------|
+| Shield | Ready to review (click to start) |
+| Spinning | Review in progress |
+| Check | Review passed |
+| Warning | Warnings found |
+| Error | Errors found |
+
+### Context Menu
+
+Right-click in the editor to access:
+- **Consensus: Review Current File**
+- **Consensus: Review Selection**
+
+## Docker
+
+Deploy Consensus as a containerized web service.
+
+### Quick Start
+
+```bash
+# Build the image
+docker build -t consensus .
+
+# Run with API key
+docker run -p 8000:8000 -e ANTHROPIC_API_KEY=your-key consensus
+```
+
+### Docker Compose
+
+For persistent storage and easier management:
+
+```yaml
+# docker-compose.yml
+version: "3.8"
+
+services:
+  consensus:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - consensus-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  consensus-data:
+```
+
+```bash
+# Start with docker-compose
+docker-compose up -d
+
+# View logs
+docker-compose logs -f
+
+# Stop
+docker-compose down
+```
+
+### Environment Variables
+
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `ANTHROPIC_API_KEY` | Your Anthropic API key | Yes |
+| `CONSENSUS_DATA_DIR` | Data directory for SQLite | No (default: `/app/data`) |
+
+### Health Check
+
+The container includes a health check that pings `/api/health`:
+
+```bash
+docker inspect --format='{{.State.Health.Status}}' consensus-web
+```
+
+### Production Deployment
+
+For production, consider:
+
+1. **Reverse proxy**: Use nginx or Traefik for SSL termination
+2. **Resource limits**: Set memory and CPU limits in docker-compose
+3. **Logging**: Configure log aggregation (e.g., to CloudWatch, Datadog)
+4. **Secrets**: Use Docker secrets or environment variable injection
+
+Example with resource limits:
+
+```yaml
+services:
+  consensus:
+    build: .
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+```
+
 ## Metrics and Cost Tracking
 
 ```bash
