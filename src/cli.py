@@ -69,7 +69,8 @@ def cli():
 @click.option("--stream", "-s", is_flag=True, help="Stream agent thinking in real-time")
 @click.option("--debate", "-d", is_flag=True, help="Use confrontational debate mode (agents argue more)")
 @click.option("--quick", "-q", is_flag=True, help="Quick mode: Round 1 only (no debate/voting), fast for hooks")
-def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool):
+@click.option("--no-cache", is_flag=True, help="Force fresh review, skip cache")
+def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool):
     """Run a full debate review on code.
 
     Review a file:
@@ -87,6 +88,9 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
 
     Quick mode (for git hooks):
         consensus review file.py --quick
+
+    Force fresh review (skip cache):
+        consensus review file.py --no-cache
     """
     # Get code from file or --code option
     if file:
@@ -128,6 +132,9 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
         else:
             team_personas = get_team_personas()
 
+        # Determine cache setting
+        use_cache = not no_cache
+
         if stream:
             # Parallel streaming mode: all 4 agents stream simultaneously in Live panels
             console.print()
@@ -135,19 +142,19 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
             console.print("[dim]Watch all 4 AI reviewers think simultaneously![/dim]")
             console.print()
 
-            orchestrator = DebateOrchestrator(personas=team_personas)
+            orchestrator = DebateOrchestrator(personas=team_personas, use_cache=use_cache)
             consensus_result = orchestrator.run_streaming_review(code_content, context)
 
         elif quick:
             # Quick mode: Round 1 only, no debate/voting (fast for hooks)
             console.print("[bold cyan]⚡ Quick Mode: Running Round 1 only[/bold cyan]")
             console.print()
-            orchestrator = DebateOrchestrator(personas=team_personas)
+            orchestrator = DebateOrchestrator(personas=team_personas, use_cache=use_cache)
             consensus_result = orchestrator.run_quick_review(code_content, context)
 
         else:
             # Standard parallel mode (full debate)
-            orchestrator = DebateOrchestrator(personas=team_personas)
+            orchestrator = DebateOrchestrator(personas=team_personas, use_cache=use_cache)
             consensus_result = orchestrator.run_full_debate(code_content, context)
 
         # Print session ID for replay

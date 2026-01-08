@@ -17,6 +17,7 @@ from src.agents.agent import Agent, ReviewResult, ResponseResult, VoteResult
 from src.agents.personas import PERSONAS, Persona
 from src.models.review import Review, Response, Vote, Consensus, VoteDecision
 from src.db.storage import Storage
+from src.cache import ReviewCache, get_cache, DEFAULT_CACHE_TTL_SECONDS
 
 
 class DebateOrchestrator:
@@ -31,6 +32,8 @@ class DebateOrchestrator:
         personas: Optional[List[Persona]] = None,
         storage: Optional[Storage] = None,
         console: Optional[Console] = None,
+        use_cache: bool = True,
+        cache_ttl: int = DEFAULT_CACHE_TTL_SECONDS,
     ):
         """Initialize the debate orchestrator.
 
@@ -38,11 +41,16 @@ class DebateOrchestrator:
             personas: List of personas to use. Defaults to all PERSONAS.
             storage: Storage instance for persistence. Created if not provided.
             console: Rich console for output. Created if not provided.
+            use_cache: Whether to use caching for reviews. Defaults to True.
+            cache_ttl: Cache TTL in seconds. Defaults to 1 hour.
         """
         self.personas = personas or PERSONAS
         self.agents = [Agent(persona) for persona in self.personas]
         self.storage = storage or Storage()
         self.console = console or Console()
+        self.use_cache = use_cache
+        self.cache_ttl = cache_ttl
+        self._cache = get_cache(cache_ttl) if use_cache else None
 
         # Current session state
         self.session_id: Optional[str] = None
@@ -58,8 +66,8 @@ class DebateOrchestrator:
         agent: Agent,
         code: str,
         context: Optional[str]
-    ) -> ReviewResult:
-        """Execute a single agent's review.
+    ) -> tuple[ReviewResult, bool]:
+        """Execute a single agent's review, with caching support.
 
         Args:
             agent: The agent to perform the review
@@ -67,9 +75,44 @@ class DebateOrchestrator:
             context: Optional context for the review
 
         Returns:
-            ReviewResult from the agent
+            Tuple of (ReviewResult, was_cached) - ReviewResult from the agent
+            and a boolean indicating if it came from cache
         """
-        return agent.review(code, context)
+        persona_name = agent.persona.name
+
+        # Check cache if enabled
+        if self._cache and self.use_cache:
+            code_hash = ReviewCache.hash_code(code, context)
+            cached = self._cache.get(code_hash, persona_name)
+            if cached:
+                # Return cached result
+                return (ReviewResult(
+                    agent_name=persona_name,
+                    issues=cached.issues,
+                    suggestions=cached.suggestions,
+                    severity=cached.severity,
+                    confidence=cached.confidence,
+                    summary=cached.summary,
+                ), True)
+
+        # No cache hit - call API
+        result = agent.review(code, context)
+
+        # Store in cache if enabled
+        if self._cache and self.use_cache:
+            code_hash = ReviewCache.hash_code(code, context)
+            self._cache.set(
+                code_hash=code_hash,
+                persona=persona_name,
+                issues=result.issues,
+                suggestions=result.suggestions,
+                severity=result.severity,
+                confidence=result.confidence,
+                summary=result.summary,
+                ttl_seconds=self.cache_ttl,
+            )
+
+        return (result, False)
 
     def _display_review(self, review: Review) -> None:
         """Display a review in a formatted panel.
@@ -154,8 +197,8 @@ class DebateOrchestrator:
         self.console.rule("[bold blue]Round 1: Initial Reviews[/bold blue]")
         self.console.print()
 
-        # Track completed reviews for display
-        completed_reviews: Dict[str, ReviewResult] = {}
+        # Track completed reviews for display: (ReviewResult, was_cached)
+        completed_reviews: Dict[str, tuple[ReviewResult, bool]] = {}
 
         # Run all agent reviews in parallel with progress display
         with Progress(
@@ -191,14 +234,15 @@ class DebateOrchestrator:
                     agent_name = agent.persona.name
 
                     try:
-                        result = future.result()
-                        completed_reviews[agent_name] = result
+                        result, was_cached = future.result()
+                        completed_reviews[agent_name] = (result, was_cached)
 
-                        # Update progress
+                        # Update progress with cache status
                         task_id = agent_tasks[agent_name]
+                        cache_indicator = " [dim](cached)[/dim]" if was_cached else ""
                         progress.update(
                             task_id,
-                            description=f"[green]\u2713 {agent_name}[/green] completed"
+                            description=f"[green]\u2713 {agent_name}[/green] completed{cache_indicator}"
                         )
                         progress.remove_task(task_id)
 
@@ -209,11 +253,17 @@ class DebateOrchestrator:
                         task_id = agent_tasks[agent_name]
                         progress.remove_task(task_id)
 
+        # Count cache hits for summary
+        cache_hits = sum(1 for _, was_cached in completed_reviews.values() if was_cached)
+        if cache_hits > 0:
+            self.console.print(f"[dim]Cache: {cache_hits}/{len(completed_reviews)} reviews from cache[/dim]")
+            self.console.print()
+
         # Convert to Review models, display, and store
         for agent in self.agents:
             agent_name = agent.persona.name
             if agent_name in completed_reviews:
-                result = completed_reviews[agent_name]
+                result, was_cached = completed_reviews[agent_name]
 
                 # Convert ReviewResult to Review model
                 review = Review(
