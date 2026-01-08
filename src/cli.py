@@ -12,7 +12,7 @@ from rich.text import Text
 
 from src.orchestrator.debate import DebateOrchestrator
 from src.db.storage import Storage
-from src.models.review import VoteDecision
+from src.models.review import VoteDecision, Severity
 from src.git.helpers import (
     is_git_repo,
     get_repo_root,
@@ -43,6 +43,69 @@ from src.agents.personas import Persona
 console = Console()
 
 
+# Severity ordering for comparison (higher number = more severe)
+SEVERITY_ORDER = {"LOW": 1, "MEDIUM": 2, "HIGH": 3, "CRITICAL": 4}
+
+
+def severity_meets_threshold(issue_severity: str, threshold: str) -> bool:
+    """Check if an issue's severity meets or exceeds a threshold.
+
+    Args:
+        issue_severity: The severity of the issue (LOW, MEDIUM, HIGH, CRITICAL)
+        threshold: The minimum severity threshold
+
+    Returns:
+        True if issue_severity >= threshold
+    """
+    issue_level = SEVERITY_ORDER.get(issue_severity.upper(), 0)
+    threshold_level = SEVERITY_ORDER.get(threshold.upper(), 0)
+    return issue_level >= threshold_level
+
+
+def filter_issues_by_severity(issues: list, min_severity: str) -> list:
+    """Filter a list of issues to only include those at or above min_severity.
+
+    Args:
+        issues: List of issue dicts with 'severity' key
+        min_severity: Minimum severity to include
+
+    Returns:
+        Filtered list of issues
+    """
+    return [
+        issue for issue in issues
+        if severity_meets_threshold(issue.get("severity", "LOW"), min_severity)
+    ]
+
+
+def check_fail_threshold(reviews: list, consensus, fail_on: str) -> bool:
+    """Check if any issues meet the fail-on threshold.
+
+    Args:
+        reviews: List of Review objects
+        consensus: Consensus object with key_issues
+        fail_on: Severity threshold that triggers failure
+
+    Returns:
+        True if any issues at or above threshold are found
+    """
+    # Check all issues from all reviews
+    for review in reviews:
+        for issue in review.issues:
+            issue_sev = issue.get("severity", "LOW")
+            if severity_meets_threshold(issue_sev, fail_on):
+                return True
+
+    # Check key issues from consensus
+    if consensus and consensus.key_issues:
+        for issue in consensus.key_issues:
+            issue_sev = issue.get("severity", "LOW")
+            if severity_meets_threshold(issue_sev, fail_on):
+                return True
+
+    return False
+
+
 @click.group()
 @click.version_option(version="0.1.0", prog_name="consensus")
 def cli():
@@ -70,7 +133,11 @@ def cli():
 @click.option("--debate", "-d", is_flag=True, help="Use confrontational debate mode (agents argue more)")
 @click.option("--quick", "-q", is_flag=True, help="Quick mode: Round 1 only (no debate/voting), fast for hooks")
 @click.option("--no-cache", is_flag=True, help="Force fresh review, skip cache")
-def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool):
+@click.option("--min-severity", type=click.Choice(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+              default=None, help="Only display issues at or above this severity")
+@click.option("--fail-on", type=click.Choice(["LOW", "MEDIUM", "HIGH", "CRITICAL"]),
+              default=None, help="Exit with code 1 if issues at or above this severity are found (for CI)")
+def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool, min_severity: Optional[str], fail_on: Optional[str]):
     """Run a full debate review on code.
 
     Review a file:
@@ -91,6 +158,13 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
 
     Force fresh review (skip cache):
         consensus review file.py --no-cache
+
+    Filter issues by severity:
+        consensus review file.py --min-severity HIGH
+
+    CI mode (exit 1 if issues found):
+        consensus review file.py --fail-on CRITICAL
+        consensus review file.py --fail-on HIGH
     """
     # Get code from file or --code option
     if file:
@@ -224,6 +298,35 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
                 elif file:
                     console.print()
                     console.print(f"[dim]To overwrite original: consensus review {file} --fix --output {file}[/dim]")
+
+        # Display severity filtering summary if enabled
+        if min_severity:
+            console.print()
+            console.print(f"[dim]Severity filter: showing only {min_severity}+ issues[/dim]")
+
+            # Count filtered issues
+            total_issues = sum(len(r.issues) for r in orchestrator.reviews)
+            filtered_issues = sum(
+                len(filter_issues_by_severity(r.issues, min_severity))
+                for r in orchestrator.reviews
+            )
+            if total_issues > filtered_issues:
+                console.print(f"[dim]({filtered_issues}/{total_issues} issues shown at {min_severity}+ level)[/dim]")
+
+        # Check fail-on threshold for CI integration
+        if fail_on:
+            should_fail = check_fail_threshold(
+                orchestrator.reviews,
+                consensus_result,
+                fail_on
+            )
+            if should_fail:
+                console.print()
+                console.print(f"[bold red]CI Check Failed: Issues at {fail_on} severity or above found[/bold red]")
+                sys.exit(1)
+            else:
+                console.print()
+                console.print(f"[bold green]CI Check Passed: No issues at {fail_on} severity or above[/bold green]")
 
     except Exception as e:
         console.print(f"[red]Error during review: {e}[/red]")
