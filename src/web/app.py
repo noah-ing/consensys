@@ -38,13 +38,44 @@ class ReviewRequest(BaseModel):
     quick: bool = False
 
 
+class FixSuggestion(BaseModel):
+    """A suggested fix for an issue found during review.
+
+    Attributes:
+        issue: Description of the issue
+        severity: Severity level (CRITICAL, HIGH, MEDIUM, LOW)
+        original_code: The problematic code snippet
+        fixed_code: The suggested fix
+        explanation: Why this fix resolves the issue
+        line: Line number where the issue occurs (if applicable)
+        agent_name: Name of the agent that suggested this fix
+    """
+    issue: str
+    severity: str
+    original_code: Optional[str] = None
+    fixed_code: Optional[str] = None
+    explanation: Optional[str] = None
+    line: Optional[int] = None
+    agent_name: Optional[str] = None
+
+
 class ReviewResponse(BaseModel):
-    """Response from code review."""
+    """Response from code review.
+
+    Attributes:
+        session_id: Unique session identifier
+        decision: Final verdict (APPROVE, REJECT, ABSTAIN)
+        reviews: List of individual agent reviews
+        consensus: Aggregated consensus data
+        vote_counts: Breakdown of votes by type
+        fixes: List of suggested fixes extracted from all reviews
+    """
     session_id: str
     decision: str
     reviews: List[Dict[str, Any]]
     consensus: Optional[Dict[str, Any]] = None
     vote_counts: Dict[str, int]
+    fixes: List[FixSuggestion] = []
 
 
 class SessionSummary(BaseModel):
@@ -56,7 +87,20 @@ class SessionSummary(BaseModel):
 
 
 class SessionDetail(BaseModel):
-    """Full details of a review session."""
+    """Full details of a review session.
+
+    Attributes:
+        session_id: Unique session identifier
+        code: The code that was reviewed
+        context: Optional context provided for the review
+        created_at: Timestamp when session was created
+        final_decision: Final verdict (APPROVE, REJECT, ABSTAIN)
+        reviews: List of individual agent reviews
+        responses: List of agent responses/rebuttals
+        votes: List of agent votes
+        consensus: Aggregated consensus data
+        fixes: List of suggested fixes extracted from all reviews
+    """
     session_id: str
     code: str
     context: Optional[str]
@@ -66,12 +110,55 @@ class SessionDetail(BaseModel):
     responses: List[Dict[str, Any]]
     votes: List[Dict[str, Any]]
     consensus: Optional[Dict[str, Any]]
+    fixes: List[FixSuggestion] = []
 
 
 # Storage instance (will be created per-request for thread safety)
 def get_storage() -> Storage:
     """Get a storage instance."""
     return Storage()
+
+
+def extract_fixes_from_reviews(reviews: List[Any], review_dicts: List[Dict[str, Any]] = None) -> List[FixSuggestion]:
+    """Extract fix suggestions from review issues.
+
+    Iterates through all reviews and extracts issues that have fix suggestions,
+    converting them into FixSuggestion objects.
+
+    Args:
+        reviews: List of Review objects or review dicts
+        review_dicts: Optional pre-converted review dicts (for session retrieval)
+
+    Returns:
+        List of FixSuggestion objects with fix data
+    """
+    fixes = []
+
+    # Use review_dicts if provided, otherwise convert reviews
+    items = review_dicts if review_dicts else reviews
+
+    for review in items:
+        # Handle both Review objects and dicts
+        agent_name = review.agent_name if hasattr(review, 'agent_name') else review.get('agent_name', 'Unknown')
+        issues = review.issues if hasattr(review, 'issues') else review.get('issues', [])
+
+        for issue in issues:
+            # Skip issues without fix suggestions
+            fix_code = issue.get('fix')
+            if not fix_code:
+                continue
+
+            fixes.append(FixSuggestion(
+                issue=issue.get('description', 'Unknown issue'),
+                severity=issue.get('severity', 'LOW'),
+                original_code=issue.get('original_code'),
+                fixed_code=fix_code,
+                explanation=issue.get('description'),  # Use description as explanation
+                line=issue.get('line'),
+                agent_name=agent_name,
+            ))
+
+    return fixes
 
 
 # Health check endpoint
@@ -86,11 +173,48 @@ async def health_check():
 async def review_code(request: ReviewRequest):
     """Submit code for review by AI agents.
 
-    Args:
-        request: ReviewRequest with code and optional context
+    POST /api/review
 
-    Returns:
-        ReviewResponse with session_id, decision, reviews, and consensus
+    Request Body:
+        code (str, required): The code to review
+        context (str, optional): Additional context about the code
+        language (str, optional): Programming language hint
+        quick (bool, optional): If true, skip debate rounds (default: false)
+
+    Response:
+        session_id (str): Unique identifier for this review session
+        decision (str): Final verdict - APPROVE, REJECT, or ABSTAIN
+        reviews (list): Individual agent reviews with issues, suggestions
+        consensus (dict): Aggregated consensus with vote_counts, key_issues
+        vote_counts (dict): Breakdown by vote type {APPROVE, REJECT, ABSTAIN}
+        fixes (list): Suggested fixes extracted from all reviews
+            - issue (str): Description of the issue
+            - severity (str): CRITICAL, HIGH, MEDIUM, or LOW
+            - original_code (str): The problematic code snippet
+            - fixed_code (str): The suggested fix
+            - explanation (str): Why this fix resolves the issue
+            - line (int): Line number where issue occurs
+            - agent_name (str): Name of agent that suggested fix
+
+    Example Response:
+        {
+            "session_id": "abc123",
+            "decision": "REJECT",
+            "reviews": [...],
+            "consensus": {...},
+            "vote_counts": {"APPROVE": 1, "REJECT": 3, "ABSTAIN": 0},
+            "fixes": [
+                {
+                    "issue": "SQL injection vulnerability",
+                    "severity": "CRITICAL",
+                    "original_code": "query = f\"SELECT * FROM users WHERE id={id}\"",
+                    "fixed_code": "query = \"SELECT * FROM users WHERE id=?\"; cursor.execute(query, (id,))",
+                    "explanation": "Use parameterized queries to prevent SQL injection",
+                    "line": 15,
+                    "agent_name": "SecurityExpert"
+                }
+            ]
+        }
     """
     # Create orchestrator with fresh storage
     storage = get_storage()
@@ -171,12 +295,16 @@ async def review_code(request: ReviewRequest):
 
     decision = consensus_dict["decision"] if consensus_dict else "PENDING"
 
+    # Extract fixes from reviews
+    fixes = extract_fixes_from_reviews(reviews)
+
     return ReviewResponse(
         session_id=session_id,
         decision=decision,
         reviews=review_dicts,
         consensus=consensus_dict,
         vote_counts=vote_counts,
+        fixes=fixes,
     )
 
 
@@ -215,11 +343,32 @@ async def list_sessions(limit: int = 50) -> List[SessionSummary]:
 async def get_session(session_id: str) -> SessionDetail:
     """Get full details of a review session.
 
-    Args:
-        session_id: The session ID (full or partial prefix)
+    GET /api/sessions/{session_id}
 
-    Returns:
-        Full session details with reviews, responses, votes, and consensus
+    Path Parameters:
+        session_id (str): Full or partial session ID prefix
+
+    Response:
+        session_id (str): Full session identifier
+        code (str): The code that was reviewed
+        context (str): Optional context provided for review
+        created_at (str): ISO timestamp when session was created
+        final_decision (str): APPROVE, REJECT, or ABSTAIN
+        reviews (list): Individual agent reviews
+        responses (list): Agent responses/rebuttals from debate
+        votes (list): Individual agent votes with reasoning
+        consensus (dict): Final consensus with vote_counts, key_issues
+        fixes (list): Suggested fixes extracted from all reviews
+            - issue (str): Description of the issue
+            - severity (str): CRITICAL, HIGH, MEDIUM, or LOW
+            - original_code (str): The problematic code snippet
+            - fixed_code (str): The suggested fix
+            - explanation (str): Why this fix resolves the issue
+            - line (int): Line number where issue occurs
+            - agent_name (str): Name of agent that suggested fix
+
+    Raises:
+        404: Session not found
     """
     storage = get_storage()
 
@@ -287,6 +436,9 @@ async def get_session(session_id: str) -> SessionDetail:
             "accepted_suggestions": consensus.accepted_suggestions,
         }
 
+    # Extract fixes from reviews
+    fixes = extract_fixes_from_reviews(reviews)
+
     return SessionDetail(
         session_id=session_id,
         code=session["code_snippet"],
@@ -297,6 +449,7 @@ async def get_session(session_id: str) -> SessionDetail:
         responses=response_dicts,
         votes=vote_dicts,
         consensus=consensus_dict,
+        fixes=fixes,
     )
 
 
@@ -315,8 +468,22 @@ async def websocket_review(websocket: WebSocket):
 
     Response format (server -> client):
     {
-        "type": "status" | "review" | "response" | "vote" | "consensus" | "complete" | "error",
+        "type": "status" | "review" | "fix" | "response" | "vote" | "consensus" | "complete" | "error",
         "data": { ... }
+    }
+
+    Fix message data format:
+    {
+        "type": "fix",
+        "data": {
+            "issue": "Description of the issue",
+            "severity": "CRITICAL|HIGH|MEDIUM|LOW",
+            "original_code": "problematic code",
+            "fixed_code": "corrected code",
+            "explanation": "why this fix resolves the issue",
+            "line": 10,
+            "agent_name": "SecurityExpert"
+        }
     }
     """
     await websocket.accept()
@@ -380,7 +547,8 @@ async def websocket_review(websocket: WebSocket):
             with ThreadPoolExecutor(max_workers=1) as executor:
                 orchestrator = await loop.run_in_executor(executor, run_review)
 
-            # Send individual reviews
+            # Send individual reviews and stream fixes as they are found
+            all_fixes = []
             for review in orchestrator.reviews:
                 await websocket.send_json({
                     "type": "review",
@@ -393,6 +561,25 @@ async def websocket_review(websocket: WebSocket):
                         "summary": review.summary,
                     }
                 })
+
+                # Stream fixes from this review
+                for issue in review.issues:
+                    fix_code = issue.get('fix')
+                    if fix_code:
+                        fix_data = {
+                            "issue": issue.get('description', 'Unknown issue'),
+                            "severity": issue.get('severity', 'LOW'),
+                            "original_code": issue.get('original_code'),
+                            "fixed_code": fix_code,
+                            "explanation": issue.get('description'),
+                            "line": issue.get('line'),
+                            "agent_name": review.agent_name,
+                        }
+                        all_fixes.append(fix_data)
+                        await websocket.send_json({
+                            "type": "fix",
+                            "data": fix_data
+                        })
 
             if quick:
                 # Quick mode: build quick consensus
@@ -468,12 +655,14 @@ async def websocket_review(websocket: WebSocket):
                 "data": consensus_data
             })
 
-            # Send complete
+            # Send complete with all fixes included
             await websocket.send_json({
                 "type": "complete",
                 "data": {
                     "session_id": orchestrator.session_id,
                     "decision": consensus_data["decision"],
+                    "fixes": all_fixes,
+                    "fix_count": len(all_fixes),
                 }
             })
 
