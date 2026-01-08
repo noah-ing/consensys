@@ -41,6 +41,7 @@ from src.personas.teams import (
     get_team_personas,
 )
 from src.agents.personas import Persona
+from src.languages import detect_language, get_syntax_highlight_language
 
 
 console = Console()
@@ -233,8 +234,18 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
         console.print("Run 'consensus review --help' for usage.")
         sys.exit(1)
 
+    # Detect language from file or code content
+    file_path_str = str(file_path) if file else None
+    detected_language = detect_language(file_path=file_path_str, code=code_content)
+    syntax_lang = get_syntax_highlight_language(language=detected_language)
+
     # Display what we're reviewing
     console.print()
+
+    # Show language detection result
+    if detected_language.name != "text":
+        console.print(f"[dim]Detected language: {detected_language.display_name}[/dim]")
+        console.print()
 
     # Show diff first if in diff-only mode
     if diff_context_info:
@@ -248,8 +259,8 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
         console.print()
 
     console.print(Panel(
-        Syntax(code_content, "python", theme="monokai", line_numbers=True),
-        title="[bold cyan]Code Under Review[/bold cyan]" + (" [diff-only]" if diff_context_info else ""),
+        Syntax(code_content, syntax_lang, theme="monokai", line_numbers=True),
+        title=f"[bold cyan]Code Under Review[/bold cyan]" + (f" [{detected_language.display_name}]" if detected_language.name != "text" else "") + (" [diff-only]" if diff_context_info else ""),
         border_style="cyan",
     ))
 
@@ -279,19 +290,19 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
             console.print("[dim]Watch all 4 AI reviewers think simultaneously![/dim]")
             console.print()
 
-            orchestrator = DebateOrchestrator(personas=team_personas, use_cache=use_cache)
+            orchestrator = DebateOrchestrator(personas=team_personas, use_cache=use_cache, language=detected_language)
             consensus_result = orchestrator.run_streaming_review(code_content, context)
 
         elif quick:
             # Quick mode: Round 1 only, no debate/voting (fast for hooks)
             console.print("[bold cyan]⚡ Quick Mode: Running Round 1 only[/bold cyan]")
             console.print()
-            orchestrator = DebateOrchestrator(personas=team_personas, use_cache=use_cache)
+            orchestrator = DebateOrchestrator(personas=team_personas, use_cache=use_cache, language=detected_language)
             consensus_result = orchestrator.run_quick_review(code_content, context)
 
         else:
             # Standard parallel mode (full debate)
-            orchestrator = DebateOrchestrator(personas=team_personas, use_cache=use_cache)
+            orchestrator = DebateOrchestrator(personas=team_personas, use_cache=use_cache, language=detected_language)
             consensus_result = orchestrator.run_full_debate(code_content, context)
 
         # Print session ID for replay
@@ -335,7 +346,7 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
 
                 # Display the fixed code
                 console.print(Panel(
-                    Syntax(fix_result.fixed_code, "python", theme="monokai", line_numbers=True),
+                    Syntax(fix_result.fixed_code, syntax_lang, theme="monokai", line_numbers=True),
                     title="[bold green]Fixed Code[/bold green]",
                     border_style="green",
                 ))
@@ -674,40 +685,13 @@ def replay(session_id: str):
         console.print()
 
 
-def _detect_language(filepath: str) -> str:
-    """Detect programming language from file extension."""
-    ext_map = {
-        ".py": "python",
-        ".js": "javascript",
-        ".ts": "typescript",
-        ".tsx": "typescript",
-        ".jsx": "javascript",
-        ".rs": "rust",
-        ".go": "go",
-        ".rb": "ruby",
-        ".java": "java",
-        ".c": "c",
-        ".cpp": "cpp",
-        ".h": "c",
-        ".hpp": "cpp",
-        ".cs": "csharp",
-        ".php": "php",
-        ".swift": "swift",
-        ".kt": "kotlin",
-        ".scala": "scala",
-        ".sh": "bash",
-        ".yml": "yaml",
-        ".yaml": "yaml",
-        ".json": "json",
-        ".md": "markdown",
-        ".sql": "sql",
-        ".html": "html",
-        ".css": "css",
-    }
-    for ext, lang in ext_map.items():
-        if filepath.endswith(ext):
-            return lang
-    return "text"
+def _detect_language_for_highlight(filepath: str) -> str:
+    """Detect programming language from file extension for syntax highlighting.
+
+    Uses the languages module but returns just the highlight string for simpler cases.
+    """
+    detected = detect_language(file_path=filepath)
+    return detected.syntax_highlight
 
 
 def _review_file_changes(files, context_prefix: str = "") -> Optional[str]:
@@ -725,7 +709,7 @@ def _review_file_changes(files, context_prefix: str = "") -> Optional[str]:
         console.print(f"[bold cyan]Reviewing file {i}/{len(files)}: {file.path}[/bold cyan]")
 
         # Display the diff
-        lang = _detect_language(file.path)
+        lang = _detect_language_for_highlight(file.path)
         console.print(Panel(
             Syntax(file.diff or "(no diff)", "diff", theme="monokai", line_numbers=True),
             title=f"[bold]Diff: {file.path}[/bold]",

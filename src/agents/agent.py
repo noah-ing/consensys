@@ -9,6 +9,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 from src.config import ANTHROPIC_API_KEY, DEFAULT_MODEL, MAX_TOKENS
 from src.agents.personas import Persona
 from src.models.review import VoteDecision
+from src.languages import LanguageInfo, get_language_prompt_hints, GENERIC
 
 
 @dataclass
@@ -54,11 +55,12 @@ class Agent:
         self.model = DEFAULT_MODEL
         self.max_tokens = MAX_TOKENS
 
-    def _build_system_prompt(self, task_type: str) -> str:
+    def _build_system_prompt(self, task_type: str, language: Optional[LanguageInfo] = None) -> str:
         """Build a complete system prompt for a specific task.
 
         Args:
             task_type: One of 'review', 'respond', or 'vote'
+            language: Optional language info for language-specific hints
 
         Returns:
             Complete system prompt string
@@ -100,10 +102,16 @@ REJECT: Code has significant issues that must be fixed
 ABSTAIN: You don't have enough context or expertise to judge"""
         }
 
+        # Add language-specific hints for review tasks
+        language_hints = ""
+        if task_type == "review" and language and language.name != "text":
+            language_hints = get_language_prompt_hints(language)
+
         return f"""{base}
 
 Review style: {self.persona.review_style}
 Your priorities: {', '.join(self.persona.priorities)}
+{language_hints}
 
 {task_instructions.get(task_type, '')}
 
@@ -170,7 +178,8 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
         self,
         code: str,
         context: Optional[str] = None,
-        on_token: Optional[callable] = None
+        on_token: Optional[callable] = None,
+        language: Optional[LanguageInfo] = None
     ) -> ReviewResult:
         """Review code with streaming output.
 
@@ -178,11 +187,12 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
             code: The code to review
             context: Optional context about the code
             on_token: Callback for streaming tokens
+            language: Optional language info for language-specific hints
 
         Returns:
             ReviewResult with issues, suggestions, and overall assessment
         """
-        system_prompt = self._build_system_prompt("review")
+        system_prompt = self._build_system_prompt("review", language=language)
 
         user_message = f"Please review the following code:\n\n```\n{code}\n```"
         if context:
@@ -240,17 +250,18 @@ IMPORTANT: Respond ONLY with valid JSON. No markdown, no explanation outside the
 
         return json.loads(text)
 
-    def review(self, code: str, context: Optional[str] = None) -> ReviewResult:
+    def review(self, code: str, context: Optional[str] = None, language: Optional[LanguageInfo] = None) -> ReviewResult:
         """Review code and return structured feedback.
 
         Args:
             code: The code to review
             context: Optional context about the code (purpose, file name, etc.)
+            language: Optional language info for language-specific hints
 
         Returns:
             ReviewResult with issues, suggestions, and overall assessment
         """
-        system_prompt = self._build_system_prompt("review")
+        system_prompt = self._build_system_prompt("review", language=language)
 
         user_message = f"Please review the following code:\n\n```\n{code}\n```"
         if context:

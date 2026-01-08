@@ -18,6 +18,7 @@ from src.agents.personas import PERSONAS, Persona
 from src.models.review import Review, Response, Vote, Consensus, VoteDecision
 from src.db.storage import Storage
 from src.cache import ReviewCache, get_cache, DEFAULT_CACHE_TTL_SECONDS
+from src.languages import LanguageInfo, detect_language, GENERIC
 
 
 class DebateOrchestrator:
@@ -34,6 +35,7 @@ class DebateOrchestrator:
         console: Optional[Console] = None,
         use_cache: bool = True,
         cache_ttl: int = DEFAULT_CACHE_TTL_SECONDS,
+        language: Optional[LanguageInfo] = None,
     ):
         """Initialize the debate orchestrator.
 
@@ -43,6 +45,7 @@ class DebateOrchestrator:
             console: Rich console for output. Created if not provided.
             use_cache: Whether to use caching for reviews. Defaults to True.
             cache_ttl: Cache TTL in seconds. Defaults to 1 hour.
+            language: Optional language info for language-specific review hints.
         """
         self.personas = personas or PERSONAS
         self.agents = [Agent(persona) for persona in self.personas]
@@ -51,6 +54,7 @@ class DebateOrchestrator:
         self.use_cache = use_cache
         self.cache_ttl = cache_ttl
         self._cache = get_cache(cache_ttl) if use_cache else None
+        self.language = language
 
         # Current session state
         self.session_id: Optional[str] = None
@@ -65,7 +69,8 @@ class DebateOrchestrator:
         self,
         agent: Agent,
         code: str,
-        context: Optional[str]
+        context: Optional[str],
+        language: Optional[LanguageInfo] = None
     ) -> tuple[ReviewResult, bool]:
         """Execute a single agent's review, with caching support.
 
@@ -73,6 +78,7 @@ class DebateOrchestrator:
             agent: The agent to perform the review
             code: The code to review
             context: Optional context for the review
+            language: Optional language info for language-specific review hints
 
         Returns:
             Tuple of (ReviewResult, was_cached) - ReviewResult from the agent
@@ -95,8 +101,8 @@ class DebateOrchestrator:
                     summary=cached.summary,
                 ), True)
 
-        # No cache hit - call API
-        result = agent.review(code, context)
+        # No cache hit - call API with language info
+        result = agent.review(code, context, language=language)
 
         # Store in cache if enabled
         if self._cache and self.use_cache:
@@ -223,7 +229,8 @@ class DebateOrchestrator:
                         self._agent_review_task,
                         agent,
                         code,
-                        context
+                        context,
+                        self.language
                     ): agent
                     for agent in self.agents
                 }
@@ -1175,7 +1182,7 @@ class DebateOrchestrator:
                     agent_buffers[name].append(token)
 
             try:
-                result = agent.review_streaming(code, context, on_token)
+                result = agent.review_streaming(code, context, on_token, language=self.language)
                 with buffer_lock:
                     agent_results[name] = result
                     agent_complete[name] = True
