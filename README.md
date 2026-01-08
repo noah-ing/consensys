@@ -93,8 +93,16 @@ consensys review file.py --fix --output fixed.py
 ### Batch Review
 
 ```bash
-# Review all Python files in a directory
+# Review all supported language files in a directory (14 languages)
 consensys review-batch src/
+
+# Filter by specific language
+consensys review-batch src/ --lang python
+consensys review-batch src/ --lang typescript
+consensys review-batch src/ --lang go
+
+# Filter by custom extensions
+consensys review-batch src/ -e .js -e .jsx
 
 # Parallel processing with 8 workers
 consensys review-batch src/ --parallel 8
@@ -453,14 +461,14 @@ Consensys includes a web-based interface for code reviews with real-time streami
 ### Starting the Server
 
 ```bash
-# Start web server on default port 8000
+# Start web server on default port 8080
 consensys web
 
 # Custom host and port
 consensys web --host 0.0.0.0 --port 3000
 ```
 
-Open `http://localhost:8000` in your browser.
+Open `http://localhost:8080` in your browser.
 
 ### Web API Endpoints
 
@@ -477,7 +485,7 @@ Open `http://localhost:8000` in your browser.
 Submit code for AI review:
 
 ```bash
-curl -X POST http://localhost:8000/api/review \
+curl -X POST http://localhost:8080/api/review \
   -H "Content-Type: application/json" \
   -d '{
     "code": "def foo(): eval(input())",
@@ -527,7 +535,7 @@ curl -X POST http://localhost:8000/api/review \
 List past review sessions:
 
 ```bash
-curl http://localhost:8000/api/sessions?limit=10
+curl http://localhost:8080/api/sessions?limit=10
 ```
 
 ### GET /api/sessions/{id}
@@ -535,7 +543,7 @@ curl http://localhost:8000/api/sessions?limit=10
 Get full details of a session:
 
 ```bash
-curl http://localhost:8000/api/sessions/abc123
+curl http://localhost:8080/api/sessions/abc123
 ```
 
 ### WebSocket /ws/review
@@ -543,7 +551,7 @@ curl http://localhost:8000/api/sessions/abc123
 For real-time streaming reviews, connect via WebSocket:
 
 ```javascript
-const ws = new WebSocket('ws://localhost:8000/ws/review');
+const ws = new WebSocket('ws://localhost:8080/ws/review');
 
 ws.onopen = () => {
   ws.send(JSON.stringify({
@@ -582,7 +590,7 @@ npm run package
 The extension requires the Consensys web server running:
 
 ```bash
-consensys web  # Starts on http://localhost:8000
+consensys web  # Starts on http://localhost:8080
 ```
 
 ### Features
@@ -598,7 +606,7 @@ consensys web  # Starts on http://localhost:8000
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `consensus.apiEndpoint` | URL of Consensys web API | `http://localhost:8000` |
+| `consensus.apiEndpoint` | URL of Consensys web API | `http://localhost:8080` |
 | `consensus.autoReviewOnSave` | Review files automatically on save | `false` |
 
 ### Status Bar Icons
@@ -628,7 +636,7 @@ Deploy Consensys as a containerized web service.
 docker build -t consensys .
 
 # Run with API key
-docker run -p 8000:8000 -e ANTHROPIC_API_KEY=your-key consensys
+docker run -p 8080:8080 -e ANTHROPIC_API_KEY=your-key consensys
 ```
 
 ### Docker Compose
@@ -643,7 +651,7 @@ services:
   consensys:
     build: .
     ports:
-      - "8000:8000"
+      - "8080:8080"
     environment:
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     volumes:
