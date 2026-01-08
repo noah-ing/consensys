@@ -187,7 +187,8 @@ def cli():
 @click.option("--diff-only", is_flag=True, help="Only review changed lines vs HEAD (requires git repo)")
 @click.option("--redteam", is_flag=True, help="Enable RedTeam mode: generate exploits and auto-patches for vulnerabilities")
 @click.option("--predict", is_flag=True, help="Enable prediction market: agents place bets on code quality outcomes")
-def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool, min_severity: Optional[str], fail_on: Optional[str], diff_only: bool, redteam: bool, predict: bool):
+@click.option("--dna", is_flag=True, help="Compare code against codebase DNA fingerprint to detect style anomalies")
+def review(file: Optional[str], code: Optional[str], context: Optional[str], fix: bool, output: Optional[str], stream: bool, debate: bool, quick: bool, no_cache: bool, min_severity: Optional[str], fail_on: Optional[str], diff_only: bool, redteam: bool, predict: bool, dna: bool):
     """Run a full debate review on code.
 
     Review a file:
@@ -224,6 +225,9 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
 
     Prediction market (agents bet on code quality):
         consensys review file.py --predict
+
+    DNA analysis (compare against codebase style):
+        consensys review file.py --dna
     """
     # Get code from file or --code option
     diff_context_info: Optional[DiffContext] = None
@@ -609,6 +613,133 @@ def review(file: Optional[str], code: Optional[str], context: Optional[str], fix
             console.print(f"[dim]Prediction ID: {prediction.prediction_id}[/dim]")
             console.print(f"[dim]Resolve with: consensys predict resolve {prediction.prediction_id[:8]} --outcome safe[/dim]")
             console.print(f"[dim]View leaderboard: consensys predict leaderboard[/dim]")
+
+        # DNA analysis: compare code against codebase fingerprint
+        if dna:
+            console.print()
+            console.print("[bold magenta]━━━ Code DNA Analysis ━━━[/bold magenta]")
+            console.print("[dim]Comparing code against codebase style fingerprint[/dim]")
+            console.print()
+
+            from src.dna import DNAExtractor, DNAAnalyzer, CodebaseFingerprint, AnomalySeverity
+
+            # Look for existing fingerprint file
+            fingerprint_file = Path(".consensys-dna.json")
+            if not fingerprint_file.exists():
+                # Check parent directories
+                current = Path.cwd()
+                for _ in range(5):
+                    candidate = current / ".consensys-dna.json"
+                    if candidate.exists():
+                        fingerprint_file = candidate
+                        break
+                    current = current.parent
+
+            if not fingerprint_file.exists():
+                console.print("[yellow]No DNA fingerprint found.[/yellow]")
+                console.print("[dim]Generate one with: consensys fingerprint <directory>[/dim]")
+                console.print("[dim]Example: consensys fingerprint src/[/dim]")
+            else:
+                try:
+                    # Load the fingerprint
+                    fingerprint_json = fingerprint_file.read_text()
+                    fingerprint = CodebaseFingerprint.from_json(fingerprint_json)
+
+                    console.print(f"[dim]Loaded fingerprint from: {fingerprint_file}[/dim]")
+                    console.print(f"[dim]Fingerprint: {fingerprint.total_files} files, {fingerprint.total_lines} lines[/dim]")
+                    console.print()
+
+                    # Analyze the code
+                    analyzer = DNAAnalyzer(fingerprint)
+                    anomalies = analyzer.compare(code_content)
+                    style_match = analyzer.get_style_match_percentage(code_content)
+
+                    # Display style match percentage
+                    if style_match >= 80:
+                        match_color = "green"
+                    elif style_match >= 60:
+                        match_color = "yellow"
+                    else:
+                        match_color = "red"
+
+                    console.print(Panel(
+                        f"[bold {match_color}]{style_match:.1f}%[/bold {match_color}]",
+                        title="[bold]Style Match Score[/bold]",
+                        border_style=match_color,
+                        padding=(0, 2),
+                    ))
+                    console.print()
+
+                    if not anomalies:
+                        console.print("[green]No style anomalies detected. Code matches codebase patterns.[/green]")
+                    else:
+                        # Group anomalies by severity
+                        warnings = [a for a in anomalies if a.severity == AnomalySeverity.WARNING]
+                        style_violations = [a for a in anomalies if a.severity == AnomalySeverity.STYLE_VIOLATION]
+                        info = [a for a in anomalies if a.severity == AnomalySeverity.INFO]
+
+                        console.print(f"[bold]Found {len(anomalies)} anomalies:[/bold]")
+                        if warnings:
+                            console.print(f"  [red]Warnings: {len(warnings)}[/red]")
+                        if style_violations:
+                            console.print(f"  [yellow]Style violations: {len(style_violations)}[/yellow]")
+                        if info:
+                            console.print(f"  [dim]Info: {len(info)}[/dim]")
+                        console.print()
+
+                        # Build anomalies table
+                        anomaly_table = Table(title="DNA Anomalies", show_header=True)
+                        anomaly_table.add_column("Line", justify="right", style="dim")
+                        anomaly_table.add_column("Severity", style="bold")
+                        anomaly_table.add_column("Pattern", style="cyan")
+                        anomaly_table.add_column("Issue", style="white")
+                        anomaly_table.add_column("Suggestion", style="green")
+
+                        for anomaly in anomalies[:15]:  # Limit to 15 for readability
+                            sev = anomaly.severity.value
+                            if sev == "WARNING":
+                                sev_style = "[red]WARNING[/red]"
+                            elif sev == "STYLE_VIOLATION":
+                                sev_style = "[yellow]STYLE[/yellow]"
+                            else:
+                                sev_style = "[dim]INFO[/dim]"
+
+                            line_str = str(anomaly.line_number) if anomaly.line_number else "-"
+                            issue_str = f"{anomaly.expected} but found {anomaly.actual}"
+                            if len(issue_str) > 50:
+                                issue_str = issue_str[:47] + "..."
+
+                            anomaly_table.add_row(
+                                line_str,
+                                sev_style,
+                                anomaly.pattern_name,
+                                issue_str,
+                                anomaly.suggestion[:40] + "..." if len(anomaly.suggestion) > 40 else anomaly.suggestion,
+                            )
+
+                        console.print(anomaly_table)
+
+                        if len(anomalies) > 15:
+                            console.print(f"[dim]... and {len(anomalies) - 15} more anomalies[/dim]")
+
+                        # Check for copy-paste and AI-generated code indicators
+                        copy_paste = [a for a in anomalies if a.pattern_name == "copy_paste_indicator"]
+                        ai_generated = [a for a in anomalies if a.pattern_name == "ai_generated_indicator"]
+
+                        if copy_paste or ai_generated:
+                            console.print()
+                            console.print("[bold yellow]External Code Indicators:[/bold yellow]")
+                            if copy_paste:
+                                console.print(f"  [yellow]Copy-paste patterns: {len(copy_paste)}[/yellow]")
+                                for cp in copy_paste[:3]:
+                                    console.print(f"    Line {cp.line_number}: {cp.context}")
+                            if ai_generated:
+                                console.print(f"  [yellow]AI-generated indicators: {len(ai_generated)}[/yellow]")
+                                for ai in ai_generated[:3]:
+                                    console.print(f"    Line {ai.line_number}: {ai.context}")
+
+                except Exception as e:
+                    console.print(f"[red]Error loading DNA fingerprint: {e}[/red]")
 
         # Auto-fix if requested
         if fix and consensus_result:
@@ -2810,6 +2941,167 @@ def predict_leaderboard(limit: int):
     console.print("[dim]  Base: 0.5 + accuracy (for agents with 5+ bets)[/dim]")
     console.print("[dim]  Bonus: up to +0.5 for high token balance[/dim]")
     console.print("[dim]  Max: 2.0x[/dim]")
+
+
+@cli.command("fingerprint")
+@click.argument("directory", type=click.Path(exists=True))
+@click.option("--output", "-o", type=click.Path(), help="Output file path (default: .consensys-dna.json)")
+@click.option("--verbose", "-v", is_flag=True, help="Show detailed fingerprint information")
+def fingerprint(directory: str, output: Optional[str], verbose: bool):
+    """Extract and save the DNA fingerprint of a codebase.
+
+    Analyzes Python files in DIRECTORY to extract coding patterns including:
+    - Naming conventions (function, class, variable styles)
+    - Type hint coverage and style
+    - Docstring format and coverage
+    - Import organization
+    - Error handling patterns
+    - Function metrics (length, complexity)
+
+    The fingerprint is saved to .consensys-dna.json and used by the
+    --dna flag in the review command to detect style anomalies.
+
+    Examples:
+        consensys fingerprint src/
+        consensys fingerprint . --output my-project-dna.json
+        consensys fingerprint src/ --verbose
+    """
+    from src.dna import DNAExtractor, CodebaseFingerprint
+
+    dir_path = Path(directory).resolve()
+
+    console.print()
+    console.print(Panel(
+        f"[bold]Extracting DNA fingerprint from:[/bold] {dir_path}",
+        title="[bold magenta]Code DNA Fingerprinting[/bold magenta]",
+        border_style="magenta",
+    ))
+    console.print()
+
+    with console.status("[bold magenta]Analyzing codebase patterns...[/bold magenta]"):
+        try:
+            extractor = DNAExtractor(str(dir_path))
+            fingerprint_result = extractor.extract()
+        except Exception as e:
+            console.print(f"[red]Error extracting fingerprint: {e}[/red]")
+            sys.exit(1)
+
+    # Display summary
+    console.print(f"[bold green]Fingerprint extracted successfully![/bold green]")
+    console.print()
+
+    summary_table = Table(title="Codebase Summary", show_header=False)
+    summary_table.add_column("Property", style="cyan")
+    summary_table.add_column("Value", style="white")
+
+    summary_table.add_row("Total Files", str(fingerprint_result.total_files))
+    summary_table.add_row("Total Lines", str(fingerprint_result.total_lines))
+    summary_table.add_row("Directory", str(fingerprint_result.directory))
+
+    console.print(summary_table)
+    console.print()
+
+    # Display patterns summary
+    patterns_table = Table(title="Detected Patterns", show_header=True)
+    patterns_table.add_column("Category", style="cyan")
+    patterns_table.add_column("Pattern", style="white")
+    patterns_table.add_column("Details", style="dim")
+
+    # Naming conventions
+    nc = fingerprint_result.naming_conventions
+    patterns_table.add_row(
+        "Functions", nc.function_style,
+        f"private prefix: {nc.private_prefix}"
+    )
+    patterns_table.add_row("Classes", nc.class_style, "")
+    patterns_table.add_row("Variables", nc.variable_style, "")
+
+    # Type hints
+    th = fingerprint_result.type_hint_coverage
+    patterns_table.add_row(
+        "Type Hints", th.style,
+        f"{th.coverage_percentage:.1f}% coverage"
+    )
+
+    # Docstrings
+    ds = fingerprint_result.docstring_style
+    patterns_table.add_row(
+        "Docstrings", ds.format,
+        f"{ds.coverage_percentage:.1f}% coverage"
+    )
+
+    # Imports
+    im = fingerprint_result.import_style
+    import_style = "from-imports" if im.prefers_from_imports else "regular imports"
+    patterns_table.add_row(
+        "Imports", import_style,
+        f"grouped: {im.groups_imports}, relative: {im.relative_import_usage:.1f}%"
+    )
+
+    # Error handling
+    eh = fingerprint_result.error_handling
+    patterns_table.add_row(
+        "Error Handling", eh.exception_specificity,
+        f"{eh.try_block_count} try blocks, bare except: {eh.uses_bare_except}"
+    )
+
+    # Tests
+    tc = fingerprint_result.test_coverage
+    patterns_table.add_row(
+        "Tests", tc.test_framework if tc.has_tests else "none",
+        f"{tc.test_file_count} test files"
+    )
+
+    # Function metrics
+    fm = fingerprint_result.function_metrics
+    patterns_table.add_row(
+        "Functions", f"avg {fm.average_length:.0f} lines",
+        f"complexity: {fm.average_complexity:.1f}, {fm.total_functions} total"
+    )
+
+    console.print(patterns_table)
+
+    # Show verbose details if requested
+    if verbose:
+        console.print()
+
+        # Naming samples
+        if nc.samples:
+            console.print("[bold]Naming Samples:[/bold]")
+            for category, names in nc.samples.items():
+                if names:
+                    console.print(f"  {category}: {', '.join(names[:5])}")
+
+        # Common imports
+        if im.common_stdlib or im.common_third_party:
+            console.print()
+            console.print("[bold]Common Imports:[/bold]")
+            if im.common_stdlib:
+                console.print(f"  stdlib: {', '.join(im.common_stdlib)}")
+            if im.common_third_party:
+                console.print(f"  third-party: {', '.join(im.common_third_party)}")
+
+        # Custom exceptions
+        if eh.custom_exceptions:
+            console.print()
+            console.print(f"[bold]Custom Exceptions:[/bold] {', '.join(eh.custom_exceptions)}")
+
+        # Common exception handlers
+        if eh.common_handlers:
+            console.print(f"[bold]Common Handlers:[/bold] {', '.join(eh.common_handlers)}")
+
+    # Save fingerprint
+    output_path = Path(output) if output else Path(".consensys-dna.json")
+
+    try:
+        output_path.write_text(fingerprint_result.to_json())
+        console.print()
+        console.print(f"[green]Fingerprint saved to: {output_path}[/green]")
+        console.print()
+        console.print("[dim]Use with: consensys review <file> --dna[/dim]")
+    except (IOError, OSError, PermissionError) as e:
+        console.print(f"[red]Error saving fingerprint: {e}[/red]")
+        sys.exit(1)
 
 
 def main():
