@@ -1,0 +1,278 @@
+# Consensus AI Code Review - GitHub Action
+#
+# This action runs multi-agent AI code review on your pull requests.
+# Multiple AI experts (SecurityExpert, PerformanceEngineer, ArchitectureCritic,
+# PragmaticDev) review your code, debate, and reach consensus.
+#
+# Usage:
+#   - uses: consensus-review/consensus@v1
+#     with:
+#       api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+#       fail_on: 'HIGH'
+#       min_severity: 'MEDIUM'
+
+name: 'Consensus AI Code Review'
+description: 'Multi-agent AI code review with debate and voting'
+author: 'Consensus'
+
+branding:
+  icon: 'check-circle'
+  color: 'blue'
+
+inputs:
+  api_key:
+    description: 'Anthropic API key for Claude AI'
+    required: true
+
+  fail_on:
+    description: 'Severity threshold to fail the check (LOW, MEDIUM, HIGH, CRITICAL)'
+    required: false
+    default: 'CRITICAL'
+
+  min_severity:
+    description: 'Minimum severity to display in results (LOW, MEDIUM, HIGH, CRITICAL)'
+    required: false
+    default: 'LOW'
+
+  quick_mode:
+    description: 'Use quick mode (Round 1 only) for faster reviews'
+    required: false
+    default: 'true'
+
+  post_comment:
+    description: 'Post review summary as PR comment'
+    required: false
+    default: 'true'
+
+  files:
+    description: 'Glob pattern for files to review (default: changed files)'
+    required: false
+    default: ''
+
+  working_directory:
+    description: 'Working directory for running the review'
+    required: false
+    default: '.'
+
+outputs:
+  decision:
+    description: 'Final consensus decision (APPROVE, REJECT, ABSTAIN)'
+    value: ${{ steps.review.outputs.decision }}
+
+  issues_count:
+    description: 'Total number of issues found'
+    value: ${{ steps.review.outputs.issues_count }}
+
+  session_id:
+    description: 'Review session ID for replay'
+    value: ${{ steps.review.outputs.session_id }}
+
+  summary:
+    description: 'Review summary text'
+    value: ${{ steps.review.outputs.summary }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
+
+    - name: Install Consensus
+      shell: bash
+      run: |
+        pip install --upgrade pip
+        # Install from PyPI (when published)
+        # pip install consensus-review
+
+        # For now, install from source if action is used locally
+        if [ -f "${{ github.action_path }}/pyproject.toml" ]; then
+          pip install -e "${{ github.action_path }}"
+        else
+          pip install consensus-review
+        fi
+
+    - name: Get changed files
+      id: changed-files
+      if: inputs.files == ''
+      uses: tj-actions/changed-files@v44
+      with:
+        files: |
+          **.py
+          **.js
+          **.ts
+          **.tsx
+          **.go
+          **.rs
+          **.java
+          **.rb
+          **.php
+          **.swift
+          **.kt
+          **.scala
+          **.cpp
+          **.c
+          **.h
+          **.cs
+
+    - name: Run Consensus Review
+      id: review
+      shell: bash
+      working-directory: ${{ inputs.working_directory }}
+      env:
+        ANTHROPIC_API_KEY: ${{ inputs.api_key }}
+      run: |
+        # Determine files to review
+        if [ -n "${{ inputs.files }}" ]; then
+          FILES="${{ inputs.files }}"
+        else
+          FILES="${{ steps.changed-files.outputs.all_changed_files }}"
+        fi
+
+        if [ -z "$FILES" ]; then
+          echo "No files to review"
+          echo "decision=APPROVE" >> $GITHUB_OUTPUT
+          echo "issues_count=0" >> $GITHUB_OUTPUT
+          echo "summary=No files to review" >> $GITHUB_OUTPUT
+          exit 0
+        fi
+
+        echo "Files to review: $FILES"
+
+        # Create output directory
+        mkdir -p /tmp/consensus-review
+
+        # Build review command options
+        QUICK_FLAG=""
+        if [ "${{ inputs.quick_mode }}" = "true" ]; then
+          QUICK_FLAG="--quick"
+        fi
+
+        # Review each file and collect results
+        TOTAL_ISSUES=0
+        REVIEW_FAILED=false
+        OVERALL_DECISION="APPROVE"
+        SESSION_IDS=""
+        SUMMARY=""
+
+        for file in $FILES; do
+          if [ -f "$file" ]; then
+            echo "::group::Reviewing $file"
+
+            OUTPUT_FILE="/tmp/consensus-review/$(basename "$file" | tr '/' '_').txt"
+
+            if consensus review "$file" \
+              $QUICK_FLAG \
+              --fail-on "${{ inputs.fail_on }}" \
+              --min-severity "${{ inputs.min_severity }}" \
+              2>&1 | tee "$OUTPUT_FILE"; then
+              echo "Review passed for $file"
+            else
+              REVIEW_FAILED=true
+              OVERALL_DECISION="REJECT"
+            fi
+
+            # Extract session ID from output
+            SESSION_ID=$(grep -o 'Session ID: [a-f0-9-]*' "$OUTPUT_FILE" | cut -d' ' -f3 | head -1)
+            if [ -n "$SESSION_ID" ]; then
+              SESSION_IDS="${SESSION_IDS}${SESSION_ID},"
+            fi
+
+            # Count issues (look for bullet points in output)
+            FILE_ISSUES=$(grep -c '^\s*[•●-]' "$OUTPUT_FILE" 2>/dev/null || echo "0")
+            TOTAL_ISSUES=$((TOTAL_ISSUES + FILE_ISSUES))
+
+            # Add to summary
+            SUMMARY="${SUMMARY}### ${file}\n"
+            # Extract decision line
+            DECISION_LINE=$(grep -E '(APPROVE|REJECT|ABSTAIN)' "$OUTPUT_FILE" | tail -1)
+            if [ -n "$DECISION_LINE" ]; then
+              SUMMARY="${SUMMARY}${DECISION_LINE}\n"
+            fi
+            SUMMARY="${SUMMARY}\n"
+
+            echo "::endgroup::"
+          fi
+        done
+
+        # Set outputs
+        echo "decision=$OVERALL_DECISION" >> $GITHUB_OUTPUT
+        echo "issues_count=$TOTAL_ISSUES" >> $GITHUB_OUTPUT
+        echo "session_id=${SESSION_IDS%,}" >> $GITHUB_OUTPUT
+
+        # Handle multiline summary
+        echo "summary<<EOF" >> $GITHUB_OUTPUT
+        echo -e "$SUMMARY" >> $GITHUB_OUTPUT
+        echo "EOF" >> $GITHUB_OUTPUT
+
+        # Write to GitHub Step Summary
+        echo "## Consensus Code Review Results" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Decision:** $OVERALL_DECISION" >> $GITHUB_STEP_SUMMARY
+        echo "**Total Issues:** $TOTAL_ISSUES" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo -e "$SUMMARY" >> $GITHUB_STEP_SUMMARY
+
+        # Fail if issues found above threshold
+        if [ "$REVIEW_FAILED" = true ]; then
+          echo "::error::Review found issues at or above ${{ inputs.fail_on }} severity"
+          exit 1
+        fi
+
+    - name: Post PR Comment
+      if: inputs.post_comment == 'true' && github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const decision = '${{ steps.review.outputs.decision }}';
+          const issuesCount = '${{ steps.review.outputs.issues_count }}';
+          const summary = `${{ steps.review.outputs.summary }}`;
+
+          const decisionEmoji = {
+            'APPROVE': ':white_check_mark:',
+            'REJECT': ':x:',
+            'ABSTAIN': ':warning:'
+          };
+
+          const body = `## ${decisionEmoji[decision] || ':robot:'} Consensus Code Review
+
+          **Decision:** ${decision}
+          **Issues Found:** ${issuesCount}
+
+          ${summary}
+
+          ---
+          <sub>Reviewed by [Consensus](https://github.com/consensus-review/consensus) - Multi-agent AI code review with debate and voting</sub>
+          `;
+
+          // Find existing comment
+          const { data: comments } = await github.rest.issues.listComments({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            issue_number: context.issue.number,
+          });
+
+          const existingComment = comments.find(c =>
+            c.body.includes('Consensus Code Review') &&
+            (c.user.login === 'github-actions[bot]' || c.user.type === 'Bot')
+          );
+
+          if (existingComment) {
+            await github.rest.issues.updateComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: existingComment.id,
+              body: body
+            });
+            console.log('Updated existing comment');
+          } else {
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: body
+            });
+            console.log('Created new comment');
+          }

@@ -1,0 +1,169 @@
+# Consensus AI Code Review - GitHub Action Workflow
+#
+# This workflow runs Consensus multi-agent code review on pull requests.
+# It reviews changed files and can post a summary comment to the PR.
+#
+# Usage: Copy this file to your repository's .github/workflows/ directory
+# and set the ANTHROPIC_API_KEY secret in your repository settings.
+
+name: Consensus Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - '**.py'
+      - '**.js'
+      - '**.ts'
+      - '**.go'
+      - '**.rs'
+      - '**.java'
+      - '**.rb'
+
+# Prevent duplicate runs on the same PR
+concurrency:
+  group: consensus-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  consensus-review:
+    name: AI Code Review
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write  # Required for posting comments
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for proper diff analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Consensus
+        run: |
+          pip install --upgrade pip
+          pip install consensus-review
+          # Alternative: Install from local if using as composite action
+          # pip install -e .
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v44
+        with:
+          files: |
+            **.py
+            **.js
+            **.ts
+            **.tsx
+            **.go
+            **.rs
+            **.java
+            **.rb
+            **.php
+            **.swift
+            **.kt
+
+      - name: Run Consensus Review
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          echo "Reviewing changed files..."
+
+          # Create output directory
+          mkdir -p review-output
+
+          # Review each changed file
+          REVIEW_FAILED=false
+          REVIEW_SUMMARY=""
+
+          for file in $CHANGED_FILES; do
+            if [ -f "$file" ]; then
+              echo "Reviewing: $file"
+
+              # Run quick review with fail-on threshold
+              if ! consensus review "$file" \
+                --quick \
+                --fail-on "${{ inputs.fail_on || 'CRITICAL' }}" \
+                --min-severity "${{ inputs.min_severity || 'LOW' }}" \
+                2>&1 | tee "review-output/$(basename $file).txt"; then
+                REVIEW_FAILED=true
+              fi
+
+              # Collect summary
+              REVIEW_SUMMARY="${REVIEW_SUMMARY}\n### ${file}\n$(cat "review-output/$(basename $file).txt" | tail -20)\n"
+            fi
+          done
+
+          # Write summary for GitHub step summary
+          echo "## Consensus Code Review Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo -e "$REVIEW_SUMMARY" >> $GITHUB_STEP_SUMMARY
+
+          # Export for comment posting
+          echo "REVIEW_SUMMARY<<EOF" >> $GITHUB_ENV
+          echo -e "$REVIEW_SUMMARY" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+          if [ "$REVIEW_FAILED" = true ] && [ "${{ inputs.fail_on_issues }}" = "true" ]; then
+            echo "Review found issues above threshold"
+            exit 1
+          fi
+
+      - name: Post PR Comment
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const summary = process.env.REVIEW_SUMMARY || 'No files reviewed';
+
+            // Look for existing Consensus comment to update
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Consensus Code Review')
+            );
+
+            const body = `## Consensus Code Review
+
+            ${summary}
+
+            ---
+            *Automated review by [Consensus](https://github.com/consensus-review/consensus) - Multi-agent AI code review*
+            `;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: body
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: body
+              });
+            }
+
+      - name: Upload review artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: consensus-reviews
+          path: review-output/
+          retention-days: 7
