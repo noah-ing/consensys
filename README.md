@@ -41,6 +41,9 @@ consensys review myfile.py --fix
 - **CI/CD integration** - GitHub Action, pre-commit hooks, and fail-on thresholds
 - **Rich output** - Beautiful terminal UI with syntax highlighting
 - **Export options** - Markdown and HTML reports for documentation
+- **RedTeam mode** - Generate proof-of-concept exploits and auto-patches for vulnerabilities
+- **Prediction market** - Agents bet tokens on code quality outcomes, track accuracy over time
+- **Code DNA fingerprinting** - Extract codebase style patterns and detect anomalies
 
 ## Installation
 
@@ -713,6 +716,224 @@ consensys metrics --period weekly
 
 # Set budget alert
 consensys metrics --budget 10.00
+```
+
+## RedTeam Mode
+
+Generate proof-of-concept exploits and auto-patches for security vulnerabilities found during review.
+
+### Basic Usage
+
+```bash
+# Review with exploit generation
+consensys review vulnerable.py --redteam
+
+# Combine with quick mode for faster results
+consensys review vulnerable.py --redteam --quick
+```
+
+### How It Works
+
+1. Standard review identifies security issues
+2. RedTeam agent generates PoC exploits for each vulnerability
+3. Auto-patch generator creates secure fixes
+4. Before/after comparison shows the fix in action
+
+### Supported Vulnerability Types
+
+| Type | Description | Example Exploit |
+|------|-------------|-----------------|
+| SQL Injection | Query manipulation via user input | `' OR '1'='1` payloads |
+| XSS | Cross-site scripting | `<script>` injection |
+| Command Injection | Shell command execution | `; rm -rf /` payloads |
+| Path Traversal | Directory escape | `../../../etc/passwd` |
+| Auth Bypass | Authentication circumvention | Token manipulation |
+
+### Safety Notice
+
+All generated exploits are clearly marked as proof-of-concept for authorized security testing only. The `poc_warning` field in results reminds users to use exploits responsibly.
+
+### Example Output
+
+```python
+# ExploitResult
+{
+    "vulnerability_type": "sql_injection",
+    "exploit_code": "user_input = \"' OR '1'='1'--\"",
+    "payload": "' OR '1'='1'--",
+    "curl_command": "curl -X POST -d \"username=' OR '1'='1'--\" ...",
+    "explanation": "Bypasses authentication by always-true condition",
+    "poc_warning": "For authorized security testing only"
+}
+
+# PatchResult
+{
+    "patched_code": "cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))",
+    "diff": "- query = f\"SELECT * FROM users WHERE id = {user_id}\"\n+ cursor.execute('SELECT * FROM users WHERE id = ?', (user_id,))",
+    "explanation": "Use parameterized queries to prevent SQL injection",
+    "verification_test": "assert \"'\" not in sanitized_input"
+}
+```
+
+## Prediction Market
+
+Agents place token bets on code quality predictions. Track accuracy over time and weight votes by historical performance.
+
+### Basic Usage
+
+```bash
+# Review with predictions enabled
+consensys review file.py --predict
+
+# View open predictions awaiting resolution
+consensys predict list
+
+# Resolve a prediction after incident/no-incident
+consensys predict resolve abc123 --outcome safe
+consensys predict resolve abc123 --outcome incident
+
+# View agent accuracy leaderboard
+consensys predict leaderboard
+```
+
+### How It Works
+
+1. During review, each agent places a bet on code quality outcome
+2. Agents start with 1000 tokens each
+3. When code is deployed and outcome is known, resolve the prediction
+4. Winners gain tokens proportional to their confidence
+5. Losers forfeit their wagered tokens
+6. Agent voting weights adjust based on historical accuracy
+
+### Prediction Types
+
+| Type | Predicted Outcome |
+|------|-------------------|
+| `BUG_WILL_OCCUR` | Code will cause bugs in production |
+| `SECURITY_INCIDENT` | Code will lead to security breach |
+| `PERFORMANCE_ISSUE` | Code will cause performance problems |
+| `MAINTENANCE_PROBLEM` | Code will be difficult to maintain |
+| `CODE_IS_SAFE` | Code is production-ready |
+
+### Token Economics
+
+- Starting balance: 1000 tokens per agent
+- Winning bet returns: stake + (stake * (1 + confidence))
+- Losing bet: tokens already deducted at bet time
+- Voting weight: 0.5 + accuracy + token_bonus (max 2.0x)
+
+### Commands
+
+```bash
+# List predictions with status
+consensys predict list
+# Output: ID, File, Type, Confidence, Bets, Status
+
+# Resolve with incident link
+consensys predict resolve abc123 --outcome incident --link "https://github.com/..."
+
+# Leaderboard shows voting weights
+consensys predict leaderboard
+# Output: Agent, Tokens, Bets, Wins, Accuracy, Weight
+```
+
+## Code DNA Fingerprinting
+
+Extract coding style patterns from your codebase and detect anomalies in new code.
+
+### Basic Usage
+
+```bash
+# Extract fingerprint from codebase
+consensys fingerprint src/
+
+# Save to custom location
+consensys fingerprint src/ --output my-project.json
+
+# Review code against fingerprint
+consensys review file.py --dna
+```
+
+### How It Works
+
+1. Fingerprint command analyzes all Python files in a directory
+2. Extracts patterns for naming, types, docs, imports, error handling
+3. Saves fingerprint to `.consensys-dna.json`
+4. Review with `--dna` compares new code against established patterns
+5. Reports anomalies and style match percentage
+
+### Extracted Patterns
+
+| Category | What It Detects |
+|----------|-----------------|
+| Naming Conventions | Function, class, variable naming styles (snake_case, camelCase, PascalCase) |
+| Type Hints | Coverage percentage, parameter vs return hint ratio |
+| Docstrings | Format (Google, NumPy, Sphinx, simple), coverage percentage |
+| Imports | From-import preference, grouping style, relative import usage |
+| Error Handling | Bare except usage, exception specificity, custom exceptions |
+| Function Metrics | Average length, max length, cyclomatic complexity |
+
+### Anomaly Detection
+
+The analyzer detects:
+
+- **Naming violations** - Functions/classes not matching codebase style
+- **Missing type hints** - When codebase has high coverage but new code lacks hints
+- **Docstring style drift** - Using different docstring format than established
+- **Import style differences** - Different import organization patterns
+- **Outdated idioms** - Using `% formatting` instead of f-strings, `== None` instead of `is None`
+- **Copy-paste indicators** - Comments like "From Stack Overflow", "Credit:", etc.
+- **AI-generated markers** - Verbose docstrings, "Generated by" comments
+
+### Severity Levels
+
+| Level | Meaning |
+|-------|---------|
+| `INFO` | Minor style difference, informational only |
+| `WARNING` | Notable deviation from codebase patterns |
+| `STYLE_VIOLATION` | Clear violation of established conventions |
+
+### Example Output
+
+```bash
+consensys review new_feature.py --dna
+
+# Output:
+# Style Match: 72%
+#
+# Anomalies Found:
+# | Line | Severity | Pattern | Issue |
+# |------|----------|---------|-------|
+# | 15   | WARNING  | naming  | Function 'getData' uses camelCase, codebase uses snake_case |
+# | 23   | INFO     | type_hints | Missing return type hint |
+# | 45   | STYLE_VIOLATION | copy_paste | Comment indicates Stack Overflow source |
+```
+
+### Fingerprint File
+
+The `.consensys-dna.json` file contains:
+
+```json
+{
+    "naming_conventions": {
+        "function_style": "snake_case",
+        "class_style": "PascalCase",
+        "variable_style": "snake_case"
+    },
+    "type_hint_coverage": {
+        "functions_with_hints": 0.85,
+        "parameters_with_hints": 0.72
+    },
+    "docstring_style": {
+        "format": "google",
+        "coverage": 0.68
+    },
+    "function_metrics": {
+        "average_length": 12.5,
+        "max_length": 45,
+        "average_complexity": 3.2
+    }
+}
 ```
 
 ## Supported Languages
