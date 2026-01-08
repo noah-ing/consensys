@@ -13,6 +13,15 @@ from rich.text import Text
 from src.orchestrator.debate import DebateOrchestrator
 from src.db.storage import Storage
 from src.models.review import VoteDecision
+from src.git.helpers import (
+    is_git_repo,
+    get_repo_root,
+    get_uncommitted_changes,
+    get_staged_changes,
+    get_pr_info,
+    post_pr_comment,
+    get_current_branch,
+)
 
 
 console = Console()
@@ -375,6 +384,253 @@ def replay(session_id: str):
         )
         console.print(panel)
         console.print()
+
+
+def _detect_language(filepath: str) -> str:
+    """Detect programming language from file extension."""
+    ext_map = {
+        ".py": "python",
+        ".js": "javascript",
+        ".ts": "typescript",
+        ".tsx": "typescript",
+        ".jsx": "javascript",
+        ".rs": "rust",
+        ".go": "go",
+        ".rb": "ruby",
+        ".java": "java",
+        ".c": "c",
+        ".cpp": "cpp",
+        ".h": "c",
+        ".hpp": "cpp",
+        ".cs": "csharp",
+        ".php": "php",
+        ".swift": "swift",
+        ".kt": "kotlin",
+        ".scala": "scala",
+        ".sh": "bash",
+        ".yml": "yaml",
+        ".yaml": "yaml",
+        ".json": "json",
+        ".md": "markdown",
+        ".sql": "sql",
+        ".html": "html",
+        ".css": "css",
+    }
+    for ext, lang in ext_map.items():
+        if filepath.endswith(ext):
+            return lang
+    return "text"
+
+
+def _review_file_changes(files, context_prefix: str = "") -> Optional[str]:
+    """Review a list of changed files and return the session ID."""
+    if not files:
+        console.print("[yellow]No changes found to review.[/yellow]")
+        return None
+
+    orchestrator = DebateOrchestrator()
+    session_id = None
+
+    for i, file in enumerate(files, 1):
+        console.print()
+        console.print(f"[bold cyan]Reviewing file {i}/{len(files)}: {file.path}[/bold cyan]")
+
+        # Display the diff
+        lang = _detect_language(file.path)
+        console.print(Panel(
+            Syntax(file.diff or "(no diff)", "diff", theme="monokai", line_numbers=True),
+            title=f"[bold]Diff: {file.path}[/bold]",
+            border_style="cyan",
+        ))
+
+        # Prepare code for review (prefer diff, fall back to content)
+        code_to_review = file.diff if file.diff else (file.content or "")
+        if not code_to_review.strip():
+            console.print(f"[dim]Skipping {file.path} - no content to review[/dim]")
+            continue
+
+        context = f"{context_prefix}File: {file.path} (Status: {file.status})"
+
+        try:
+            consensus = orchestrator.run_full_debate(code_to_review, context)
+            session_id = orchestrator.session_id
+        except Exception as e:
+            console.print(f"[red]Error reviewing {file.path}: {e}[/red]")
+            continue
+
+    return session_id
+
+
+@cli.command()
+@click.argument("pr_number", type=int)
+@click.option("--post", is_flag=True, help="Post summary comment to the PR")
+def pr(pr_number: int, post: bool):
+    """Review a GitHub Pull Request.
+
+    Fetches the PR diff and runs a full debate on the changed files.
+
+    \b
+    Examples:
+        consensus pr 123
+        consensus pr 123 --post  # Post summary to PR
+
+    Requires: gh CLI (https://cli.github.com) authenticated
+    """
+    console.print()
+    console.print(f"[bold cyan]Fetching PR #{pr_number}...[/bold cyan]")
+
+    pr_info = get_pr_info(pr_number)
+    if not pr_info:
+        console.print("[red]Error: Could not fetch PR. Is gh CLI installed and authenticated?[/red]")
+        console.print("[dim]Install from: https://cli.github.com[/dim]")
+        sys.exit(1)
+
+    console.print(Panel(
+        f"[bold]PR #{pr_info.number}:[/bold] {pr_info.title}\n"
+        f"[bold]Author:[/bold] {pr_info.author}\n"
+        f"[bold]Branch:[/bold] {pr_info.head_branch} -> {pr_info.base_branch}\n"
+        f"[bold]Files:[/bold] {len(pr_info.files)} changed\n"
+        f"[bold]URL:[/bold] {pr_info.url}",
+        title="[bold cyan]Pull Request[/bold cyan]",
+        border_style="cyan",
+    ))
+
+    if not pr_info.files:
+        console.print("[yellow]No files changed in this PR.[/yellow]")
+        return
+
+    session_id = _review_file_changes(pr_info.files, context_prefix=f"PR #{pr_number}: ")
+
+    if session_id:
+        console.print()
+        console.print(f"[dim]Session ID: {session_id}[/dim]")
+        console.print(f"[dim]Replay with: consensus replay {session_id}[/dim]")
+
+        if post:
+            # Build summary comment
+            storage = Storage()
+            consensus_result = storage.get_consensus(session_id)
+            if consensus_result:
+                decision_str = consensus_result.final_decision.value
+                comment = f"""## Consensus Code Review
+
+**Decision:** {decision_str}
+
+**Vote Breakdown:**
+- APPROVE: {consensus_result.vote_counts.get('APPROVE', 0)}
+- REJECT: {consensus_result.vote_counts.get('REJECT', 0)}
+- ABSTAIN: {consensus_result.vote_counts.get('ABSTAIN', 0)}
+
+"""
+                if consensus_result.key_issues:
+                    comment += "**Key Issues:**\n"
+                    for issue in consensus_result.key_issues[:5]:
+                        desc = issue.get("description", str(issue))
+                        comment += f"- {desc}\n"
+                    comment += "\n"
+
+                if consensus_result.accepted_suggestions:
+                    comment += "**Agreed Suggestions:**\n"
+                    for suggestion in consensus_result.accepted_suggestions[:5]:
+                        comment += f"- {suggestion}\n"
+
+                comment += f"\n---\n*Generated by [Consensus](https://github.com/consensus) - Multi-agent AI code review*"
+
+                console.print()
+                console.print("[dim]Posting comment to PR...[/dim]")
+                success, msg = post_pr_comment(pr_number, comment)
+                if success:
+                    console.print("[green]Comment posted successfully![/green]")
+                else:
+                    console.print(f"[red]Failed to post comment: {msg}[/red]")
+
+
+@cli.command()
+def diff():
+    """Review all uncommitted changes in the current repo.
+
+    Reviews both staged and unstaged changes. Use before committing
+    to catch issues early.
+
+    \b
+    Example:
+        cd my-project
+        consensus diff
+    """
+    if not is_git_repo():
+        console.print("[red]Error: Not in a git repository.[/red]")
+        console.print("[dim]Run this command from within a git repository.[/dim]")
+        sys.exit(1)
+
+    repo_root = get_repo_root()
+    branch = get_current_branch()
+
+    console.print()
+    console.print(Panel(
+        f"[bold]Repository:[/bold] {repo_root}\n"
+        f"[bold]Branch:[/bold] {branch}",
+        title="[bold cyan]Reviewing Uncommitted Changes[/bold cyan]",
+        border_style="cyan",
+    ))
+
+    files = get_uncommitted_changes()
+    if not files:
+        console.print("[green]No uncommitted changes found. Working tree is clean.[/green]")
+        return
+
+    console.print(f"[dim]Found {len(files)} file(s) with changes[/dim]")
+
+    session_id = _review_file_changes(files, context_prefix="Uncommitted: ")
+
+    if session_id:
+        console.print()
+        console.print(f"[dim]Session ID: {session_id}[/dim]")
+        console.print(f"[dim]Replay with: consensus replay {session_id}[/dim]")
+
+
+@cli.command("commit")
+def commit_review():
+    """Review staged changes before committing.
+
+    Reviews only the staged changes (what would be included in the
+    next commit). Use as a pre-commit check.
+
+    \b
+    Example:
+        git add myfile.py
+        consensus commit
+        git commit -m "My changes"
+    """
+    if not is_git_repo():
+        console.print("[red]Error: Not in a git repository.[/red]")
+        console.print("[dim]Run this command from within a git repository.[/dim]")
+        sys.exit(1)
+
+    repo_root = get_repo_root()
+    branch = get_current_branch()
+
+    console.print()
+    console.print(Panel(
+        f"[bold]Repository:[/bold] {repo_root}\n"
+        f"[bold]Branch:[/bold] {branch}",
+        title="[bold cyan]Reviewing Staged Changes[/bold cyan]",
+        border_style="cyan",
+    ))
+
+    files = get_staged_changes()
+    if not files:
+        console.print("[yellow]No staged changes found.[/yellow]")
+        console.print("[dim]Stage changes with: git add <file>[/dim]")
+        return
+
+    console.print(f"[dim]Found {len(files)} staged file(s)[/dim]")
+
+    session_id = _review_file_changes(files, context_prefix="Staged: ")
+
+    if session_id:
+        console.print()
+        console.print(f"[dim]Session ID: {session_id}[/dim]")
+        console.print(f"[dim]Replay with: consensus replay {session_id}[/dim]")
 
 
 def main():
