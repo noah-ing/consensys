@@ -20,7 +20,7 @@ from src.languages import detect_language
 app = FastAPI(
     title="Consensys",
     description="Multi-agent AI code review with debate and voting",
-    version="0.1.0",
+    version="0.1.2",
 )
 
 # Mount static files

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "consensys"
-version = "0.1.1"
+version = "0.1.2"
 description = "Multi-agent code review with AI debate"
 readme = "README.md"
 license = {text = "MIT"}
@@ -69,7 +69,8 @@ where = ["."]
 include = ["src*", "consensys*"]
 
 [tool.setuptools.package-data]
-"*" = ["*.yaml", "*.json"]
+"*" = ["*.yaml", "*.json", "*.html", "*.css", "*.js"]
+src = ["web/static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
