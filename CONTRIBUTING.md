@@ -46,7 +46,7 @@ Be respectful and constructive. We're all here to build something great together
 ## Project Structure
 
 ```
-consensus/
+consensys/
 ├── src/
 │   ├── agents/         # AI agent personas and Claude API wrapper
 │   ├── db/             # SQLite storage layer

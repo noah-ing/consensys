@@ -53,7 +53,7 @@ USER consensys
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    CONSENSUS_DATA_DIR=/app/data
+    CONSENSYS_DATA_DIR=/app/data
 
 # Expose web UI port
 EXPOSE 8000

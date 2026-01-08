@@ -22,7 +22,7 @@ on:
 
 # Prevent duplicate runs on the same PR
 concurrency:
-  group: consensus-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: consensys-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:

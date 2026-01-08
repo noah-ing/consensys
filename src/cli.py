@@ -174,7 +174,7 @@ def cli():
 @click.argument("file", required=False, type=click.Path(exists=True))
 @click.option("--code", "-c", help="Review inline code snippet instead of a file")
 @click.option("--context", "-x", help="Additional context about the code")
-@click.option("--fix", "-f", is_flag=True, help="Auto-fix code based on consensus feedback")
+@click.option("--fix", "-f", is_flag=True, help="Auto-fix code based on Consensys feedback")
 @click.option("--output", "-o", type=click.Path(), help="Write fixed code to file (with --fix)")
 @click.option("--stream", "-s", is_flag=True, help="Stream agent thinking in real-time")
 @click.option("--debate", "-d", is_flag=True, help="Use confrontational debate mode (agents argue more)")
@@ -1212,7 +1212,7 @@ def pr(pr_number: int, post: bool):
             consensus_result = storage.get_consensus(session_id)
             if consensus_result:
                 decision_str = consensus_result.final_decision.value
-                comment = f"""## Consensus Code Review
+                comment = f"""## Consensys Code Review
 
 **Decision:** {decision_str}
 
@@ -1407,7 +1407,7 @@ def stats():
 
     console.print()
     console.print(Panel(
-        "[bold cyan]Consensus Review Statistics[/bold cyan]",
+        "[bold cyan]Consensys Review Statistics[/bold cyan]",
         border_style="cyan",
     ))
     console.print()
@@ -2035,7 +2035,7 @@ def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
     if report:
         report_path = Path(report)
         report_lines = [
-            "# Consensus Batch Review Report",
+            "# Consensys Batch Review Report",
             "",
             f"**Directory:** `{dir_path.absolute()}`",
             f"**Files Reviewed:** {total_files}",
@@ -2102,7 +2102,7 @@ def review_batch(path: str, parallel: int, quick: bool, no_cache: bool,
 def add_persona(name: str, role: str, style: str):
     """Create a new custom reviewer persona interactively.
 
-    Custom personas are stored in ~/.consensus/personas.json and can
+    Custom personas are stored in ~/.consensys/personas.json and can
     participate in code reviews alongside built-in experts.
 
     \b
@@ -2361,7 +2361,7 @@ def teams():
 @click.option("--git/--no-git", default=True, help="Install git pre-commit hook")
 @click.option("--claude/--no-claude", default=True, help="Install Claude Code hooks")
 def install_hooks(git: bool, claude: bool):
-    """Install consensus hooks for automatic code review.
+    """Install Consensys hooks for automatic code review.
 
     Installs hooks that automatically run consensys review:
 
@@ -2371,7 +2371,7 @@ def install_hooks(git: bool, claude: bool):
     """
     from src.hooks.installer import install_hooks as do_install, get_hook_status
 
-    console.print("[bold cyan]Installing Consensus Hooks[/bold cyan]")
+    console.print("[bold cyan]Installing Consensys Hooks[/bold cyan]")
     console.print()
 
     results = do_install(git_hooks=git, claude_code_hooks=claude)
@@ -2395,10 +2395,10 @@ def install_hooks(git: bool, claude: bool):
 @click.option("--git/--no-git", default=True, help="Uninstall git pre-commit hook")
 @click.option("--claude/--no-claude", default=True, help="Uninstall Claude Code hooks")
 def uninstall_hooks(git: bool, claude: bool):
-    """Uninstall consensus hooks."""
+    """Uninstall Consensys hooks."""
     from src.hooks.installer import uninstall_hooks as do_uninstall
 
-    console.print("[bold cyan]Uninstalling Consensus Hooks[/bold cyan]")
+    console.print("[bold cyan]Uninstalling Consensys Hooks[/bold cyan]")
     console.print()
 
     results = do_uninstall(git_hooks=git, claude_code_hooks=claude)
@@ -2435,11 +2435,11 @@ def hook_status():
 
 @cli.group()
 def config():
-    """Manage Consensus configuration.
+    """Manage Consensys configuration.
 
     View and manage configuration settings from:
-    - Project-level: .consensus.yaml or .consensus.json in repo root
-    - User-level: ~/.consensus/config.yaml
+    - Project-level: .consensys.yaml or .consensys.json in repo root
+    - User-level: ~/.consensys/config.yaml
 
     CLI flags always override config file settings.
     """
@@ -2471,7 +2471,7 @@ def config_show():
 
     console.print()
     console.print(Panel(
-        "[bold cyan]Consensus Configuration[/bold cyan]",
+        "[bold cyan]Consensys Configuration[/bold cyan]",
         border_style="cyan",
     ))
     console.print()
@@ -2491,7 +2491,7 @@ def config_show():
     if not user_config.exists():
         console.print(f"  [dim]User config: {user_config} (not found)[/dim]")
     if not project_config:
-        console.print("  [dim]Project config: .consensus.yaml (not found)[/dim]")
+        console.print("  [dim]Project config: .consensys.yaml (not found)[/dim]")
 
     console.print()
 
@@ -2573,8 +2573,8 @@ def config_show():
 
 
 @config.command("init")
-@click.option("--project", "-p", is_flag=True, help="Create project-level config (.consensus.yaml)")
-@click.option("--user", "-u", is_flag=True, help="Create user-level config (~/.consensus/config.yaml)")
+@click.option("--project", "-p", is_flag=True, help="Create project-level config (.consensys.yaml)")
+@click.option("--user", "-u", is_flag=True, help="Create user-level config (~/.consensys/config.yaml)")
 def config_init(project: bool, user: bool):
     """Initialize a configuration file with example values.
 
@@ -2582,8 +2582,8 @@ def config_init(project: bool, user: bool):
 
     \b
     Examples:
-        consensys config init --project   # Create .consensus.yaml
-        consensys config init --user      # Create ~/.consensus/config.yaml
+        consensys config init --project   # Create .consensys.yaml
+        consensys config init --user      # Create ~/.consensys/config.yaml
         consensys config init             # Interactive selection
     """
     from src.settings import create_example_config, get_user_config_file
@@ -2593,8 +2593,8 @@ def config_init(project: bool, user: bool):
         console.print()
         console.print("[bold]Where would you like to create the config file?[/bold]")
         console.print()
-        console.print("  [cyan]1.[/cyan] Project-level (.consensus.yaml in current directory)")
-        console.print("  [cyan]2.[/cyan] User-level (~/.consensus/config.yaml)")
+        console.print("  [cyan]1.[/cyan] Project-level (.consensys.yaml in current directory)")
+        console.print("  [cyan]2.[/cyan] User-level (~/.consensys/config.yaml)")
         console.print()
 
         choice = click.prompt("Choose option", type=click.Choice(["1", "2"]), default="1")
@@ -2602,7 +2602,7 @@ def config_init(project: bool, user: bool):
         user = choice == "2"
 
     if project:
-        config_path = Path.cwd() / ".consensus.yaml"
+        config_path = Path.cwd() / ".consensys.yaml"
         if config_path.exists():
             if not click.confirm(f"{config_path} already exists. Overwrite?"):
                 console.print("[dim]Cancelled.[/dim]")
@@ -2649,7 +2649,7 @@ def config_path():
     if project_config:
         console.print(f"    {project_config} [green]exists[/green]")
     else:
-        console.print(f"    .consensus.yaml or .consensus.json in repo root ([dim]not found[/dim])")
+        console.print(f"    .consensys.yaml or .consensys.json in repo root ([dim]not found[/dim])")
 
     console.print()
     console.print("[dim]Precedence: CLI flags > project config > user config > defaults[/dim]")
@@ -2682,11 +2682,11 @@ def web_server(host: str, port: int):
 
     console.print()
     console.print(Panel.fit(
-        f"[bold green]Starting Consensus Web Server[/bold green]\n\n"
+        f"[bold green]Starting Consensys Web Server[/bold green]\n\n"
         f"Server: http://{host if host != '0.0.0.0' else 'localhost'}:{port}\n"
         f"API Docs: http://{host if host != '0.0.0.0' else 'localhost'}:{port}/docs\n\n"
         "[dim]Press Ctrl+C to stop[/dim]",
-        title="Consensus Web UI",
+        title="Consensys Web UI",
         border_style="green"
     ))
     console.print()

@@ -2,7 +2,7 @@
 Clean Code Example - Best Practices Demonstration
 
 This file demonstrates secure, well-structured Python code that should pass
-Consensus review. Run `consensus review examples/clean.py` to verify.
+Consensys review. Run `consensys review examples/clean.py` to verify.
 
 This code addresses all vulnerabilities shown in vulnerable.py with proper fixes.
 """
@@ -244,7 +244,7 @@ class BankAccount:
 
 if __name__ == "__main__":
     print("This file demonstrates secure coding best practices.")
-    print("Run: consensus review examples/clean.py")
+    print("Run: consensys review examples/clean.py")
 
     # Demo: Generate a secure session token
     token = generate_session_token()

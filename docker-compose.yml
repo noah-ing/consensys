@@ -23,7 +23,7 @@ services:
       # Required: Your Anthropic API key
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       # Optional: Data directory for SQLite database
-      - CONSENSUS_DATA_DIR=/app/data
+      - CONSENSYS_DATA_DIR=/app/data
     volumes:
       # Persist review history and cache
       - consensys-data:/app/data

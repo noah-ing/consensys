@@ -1,8 +1,8 @@
 """
 Vulnerable Code Example - For Educational Purposes Only
 
-This file contains common security vulnerabilities that Consensus will detect.
-Run `consensus review examples/vulnerable.py` to see the AI agents identify issues.
+This file contains common security vulnerabilities that Consensys will detect.
+Run `consensys review examples/vulnerable.py` to see the AI agents identify issues.
 
 WARNING: Do not use this code in production!
 """
@@ -142,4 +142,4 @@ class BankAccount:
 if __name__ == "__main__":
     # Demo usage (don't actually run these with untrusted input!)
     print("This file demonstrates common security vulnerabilities.")
-    print("Run: consensus review examples/vulnerable.py")
+    print("Run: consensys review examples/vulnerable.py")

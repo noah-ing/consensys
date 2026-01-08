@@ -1,6 +1,6 @@
 """Custom persona loading and saving for Consensys.
 
-Custom personas are stored in ~/.consensus/personas.json and can be
+Custom personas are stored in ~/.consensys/personas.json and can be
 created interactively via the CLI.
 """
 import json
@@ -13,12 +13,12 @@ from src.agents.personas import Persona, PERSONAS, PERSONAS_BY_NAME
 def get_config_dir() -> Path:
     """Get the Consensys configuration directory.
 
-    Creates ~/.consensus if it doesn't exist.
+    Creates ~/.consensys if it doesn't exist.
 
     Returns:
         Path to the configuration directory
     """
-    config_dir = Path.home() / ".consensus"
+    config_dir = Path.home() / ".consensys"
     config_dir.mkdir(exist_ok=True)
     return config_dir
 
@@ -27,13 +27,13 @@ def get_personas_file() -> Path:
     """Get the path to the custom personas file.
 
     Returns:
-        Path to ~/.consensus/personas.json
+        Path to ~/.consensys/personas.json
     """
     return get_config_dir() / "personas.json"
 
 
 def load_custom_personas() -> List[Persona]:
-    """Load custom personas from ~/.consensus/personas.json.
+    """Load custom personas from ~/.consensys/personas.json.
 
     Returns:
         List of custom Persona objects
@@ -64,7 +64,7 @@ def load_custom_personas() -> List[Persona]:
 
 
 def save_custom_personas(personas: List[Persona]) -> None:
-    """Save custom personas to ~/.consensus/personas.json.
+    """Save custom personas to ~/.consensys/personas.json.
 
     Args:
         personas: List of Persona objects to save

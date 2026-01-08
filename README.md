@@ -254,16 +254,16 @@ If you prefer to use the workflow file directly:
 export ANTHROPIC_API_KEY="your-api-key"
 
 # Optional
-export CONSENSUS_MODEL="claude-3-5-haiku-20241022"
-export CONSENSUS_CACHE_TTL="3600"
+export CONSENSYS_MODEL="claude-3-5-haiku-20241022"
+export CONSENSYS_CACHE_TTL="3600"
 ```
 
 ### Configuration Files
 
-Create `.consensus.yaml` in your project root:
+Create `.consensys.yaml` in your project root:
 
 ```yaml
-# .consensus.yaml
+# .consensys.yaml
 default_team: full-review
 min_severity: MEDIUM
 cache_ttl: 3600
@@ -272,7 +272,7 @@ fail_on: HIGH
 quick_mode: false
 ```
 
-Or user-level config at `~/.consensus/config.yaml`.
+Or user-level config at `~/.consensys/config.yaml`.
 
 ```bash
 # Initialize config
@@ -670,7 +670,7 @@ docker-compose down
 | Variable | Description | Required |
 |----------|-------------|----------|
 | `ANTHROPIC_API_KEY` | Your Anthropic API key | Yes |
-| `CONSENSUS_DATA_DIR` | Data directory for SQLite | No (default: `/app/data`) |
+| `CONSENSYS_DATA_DIR` | Data directory for SQLite | No (default: `/app/data`) |
 
 ### Health Check
 
@@ -958,7 +958,7 @@ The `examples/` directory contains sample files to help you get started:
 | [`clean.py`](examples/clean.py) | Well-written, secure code demonstrating best practices |
 | [`review-demo.sh`](examples/review-demo.sh) | Shell script showcasing CLI usage patterns |
 | [`github-workflow.yml`](examples/github-workflow.yml) | Complete GitHub Actions workflow example |
-| [`.consensus.yaml`](examples/.consensus.yaml) | Example configuration file with all options |
+| [`.consensys.yaml`](examples/.consensys.yaml) | Example configuration file with all options |
 
 ### Try the Demo
 
@@ -1025,11 +1025,11 @@ Copy the example config to your project:
 
 ```bash
 # Project-level config
-cp examples/.consensus.yaml .consensus.yaml
+cp examples/.consensys.yaml .consensys.yaml
 
 # User-level config
-mkdir -p ~/.consensus
-cp examples/.consensus.yaml ~/.consensus/config.yaml
+mkdir -p ~/.consensys
+cp examples/.consensys.yaml ~/.consensys/config.yaml
 ```
 
 The config file includes:

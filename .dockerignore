@@ -1,4 +1,4 @@
-# Consensus Docker Ignore
+# Consensys Docker Ignore
 # Exclude files that shouldn't be included in the Docker image
 
 # Git

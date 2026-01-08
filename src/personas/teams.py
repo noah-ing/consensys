@@ -37,7 +37,7 @@ def get_config_dir() -> Path:
     Returns:
         Path to the configuration directory
     """
-    config_dir = Path.home() / ".consensus"
+    config_dir = Path.home() / ".consensys"
     config_dir.mkdir(exist_ok=True)
     return config_dir
 
@@ -46,7 +46,7 @@ def get_team_config_file() -> Path:
     """Get the path to the team configuration file.
 
     Returns:
-        Path to ~/.consensus/team.json
+        Path to ~/.consensys/team.json
     """
     return get_config_dir() / "team.json"
 

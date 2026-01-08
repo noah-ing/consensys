@@ -1,7 +1,7 @@
-# Example Consensus Configuration File
+# Example Consensys Configuration File
 #
-# Copy this file to your project root as .consensus.yaml
-# Or copy to ~/.consensus/config.yaml for user-level defaults
+# Copy this file to your project root as .consensys.yaml
+# Or copy to ~/.consensys/config.yaml for user-level defaults
 #
 # Precedence: CLI flags > project config > user config > defaults
 

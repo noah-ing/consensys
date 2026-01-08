@@ -1,4 +1,4 @@
-"""Shared pytest fixtures for Consensus tests."""
+"""Shared pytest fixtures for Consensys tests."""
 import os
 import tempfile
 from pathlib import Path

@@ -1,5 +1,5 @@
-# Consensus - Multi-agent code review with AI debate
-# This module provides the public API for the consensus package.
+# Consensys - Multi-agent code review with AI debate
+# This module provides the public API for the consensys package.
 
 # Re-export the version
 from src import __version__

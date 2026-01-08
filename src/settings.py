@@ -2,8 +2,8 @@
 
 Supports loading configuration from multiple sources with precedence:
 1. CLI flags (highest priority)
-2. Project-level config (.consensus.yaml or .consensus.json in repo root)
-3. User-level config (~/.consensus/config.yaml)
+2. Project-level config (.consensys.yaml or .consensys.json in repo root)
+3. User-level config (~/.consensys/config.yaml)
 4. Default values (lowest priority)
 
 Config options:
@@ -69,9 +69,9 @@ def get_user_config_dir() -> Path:
     """Get the user-level configuration directory.
 
     Returns:
-        Path to ~/.consensus
+        Path to ~/.consensys
     """
-    config_dir = Path.home() / ".consensus"
+    config_dir = Path.home() / ".consensys"
     config_dir.mkdir(exist_ok=True)
     return config_dir
 
@@ -80,7 +80,7 @@ def get_user_config_file() -> Path:
     """Get the path to the user-level config file.
 
     Returns:
-        Path to ~/.consensus/config.yaml
+        Path to ~/.consensys/config.yaml
     """
     return get_user_config_dir() / "config.yaml"
 
@@ -89,8 +89,8 @@ def find_project_config() -> Optional[Path]:
     """Find project-level config file.
 
     Searches current directory and parent directories for:
-    - .consensus.yaml
-    - .consensus.json
+    - .consensys.yaml
+    - .consensys.json
 
     Returns:
         Path to config file if found, None otherwise
@@ -101,12 +101,12 @@ def find_project_config() -> Optional[Path]:
     # Search up to 10 parent directories
     for _ in range(10):
         # Check for yaml config
-        yaml_config = current / ".consensus.yaml"
+        yaml_config = current / ".consensys.yaml"
         if yaml_config.exists():
             return yaml_config
 
         # Check for json config
-        json_config = current / ".consensus.json"
+        json_config = current / ".consensys.json"
         if json_config.exists():
             return json_config
 
@@ -200,8 +200,8 @@ def load_config() -> ConsensysConfig:
     """Load configuration from all sources.
 
     Precedence (highest to lowest):
-    1. Project-level config (.consensus.yaml or .consensus.json)
-    2. User-level config (~/.consensus/config.yaml)
+    1. Project-level config (.consensys.yaml or .consensys.json)
+    2. User-level config (~/.consensys/config.yaml)
     3. Default values
 
     Returns:
@@ -303,8 +303,8 @@ def create_example_config(path: Optional[Path] = None) -> str:
         Example configuration as YAML string
     """
     example = """# Consensys Configuration
-# Place this file in your project root as .consensus.yaml
-# Or in ~/.consensus/config.yaml for user-level defaults
+# Place this file in your project root as .consensys.yaml
+# Or in ~/.consensys/config.yaml for user-level defaults
 
 # Default team for reviews
 # Can be a preset name: full-review, security-focused, performance-focused, quick-check

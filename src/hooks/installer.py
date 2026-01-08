@@ -25,7 +25,7 @@ fi
 echo "🔍 Running Consensys review on staged changes..."
 echo ""
 
-# Run consensus on staged changes
+# Run consensys on staged changes
 python -m src.cli commit --quick
 
 # Check the exit code
@@ -221,7 +221,7 @@ def _install_claude_code_hook() -> bool:
         hook_path.chmod(hook_path.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
         # Also create a config entry
-        config_path = CLAUDE_CODE_HOOKS_DIR / "consensus-config.json"
+        config_path = CLAUDE_CODE_HOOKS_DIR / "consensys-config.json"
         config_path.write_text('''{
     "name": "consensys-review",
     "description": "Multi-agent AI code review",
@@ -240,7 +240,7 @@ def _uninstall_claude_code_hook() -> bool:
     """Uninstall Claude Code hook."""
     try:
         hook_path = CLAUDE_CODE_HOOKS_DIR / "consensys-review.sh"
-        config_path = CLAUDE_CODE_HOOKS_DIR / "consensus-config.json"
+        config_path = CLAUDE_CODE_HOOKS_DIR / "consensys-config.json"
 
         if hook_path.exists():
             hook_path.unlink()
