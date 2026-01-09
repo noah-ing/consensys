@@ -185,16 +185,20 @@ class TestCodeSubmission:
 
         take_screenshot(page, "03_processing")
 
-        # Wait for results (allow up to 120 seconds for API calls)
+        # Wait for results section to be visible (starts immediately with WebSocket)
         results_section = page.locator("#results-section")
         expect(results_section).to_be_visible(timeout=120000)
 
+        # Wait for the status section to hide (indicates review is complete)
+        status_section = page.locator("#status-section")
+        expect(status_section).to_be_hidden(timeout=120000)
+
         take_screenshot(page, "04_results_loaded")
 
-        # Wait a bit more for panels to render
-        page.wait_for_timeout(2000)
+        # Additional wait for UI to stabilize
+        page.wait_for_timeout(3000)
 
-        # Check consensus panel - may not appear if no votes are tallied
+        # Check consensus panel - should be visible after review completes
         consensus_panel = page.locator("#consensus-panel")
         consensus_visible = consensus_panel.is_visible()
 
@@ -204,7 +208,8 @@ class TestCodeSubmission:
             decision_badge = page.locator("#decision-badge")
             if decision_badge.is_visible():
                 badge_text = decision_badge.inner_text()
-                assert badge_text in ["APPROVE", "REJECT", "ABSTAIN", ""], f"Unexpected decision: {badge_text}"
+                # Badge text is formatted as APPROVED, REJECTED, or NEEDS REVIEW
+                assert badge_text in ["APPROVED", "REJECTED", "NEEDS REVIEW", ""], f"Unexpected decision: {badge_text}"
         else:
             take_screenshot(page, "05_no_consensus_panel")
             record_bug(
@@ -357,8 +362,14 @@ class TestExportFunctionality:
         page.locator("#quick-mode").check()
         page.locator("#submit-btn").click()
 
-        # Wait for results
+        # Wait for results section
         expect(page.locator("#results-section")).to_be_visible(timeout=120000)
+
+        # Wait for status section to hide (review complete)
+        expect(page.locator("#status-section")).to_be_hidden(timeout=120000)
+
+        # Allow UI to stabilize
+        page.wait_for_timeout(2000)
 
         # Check export panel visibility
         export_panel = page.locator("#export-panel")
@@ -427,12 +438,16 @@ class TestQuickActionsPanel:
             action_count = actions.count()
             print(f"Quick actions found: {action_count}")
 
-            # Try expanding a pattern if available
+            # Try expanding a pattern if available - find a visible button
             if action_count > 0:
-                first_action = actions.first
-                first_action.click()
-                page.wait_for_timeout(500)
-                take_screenshot(page, "10a_quick_action_expanded")
+                # Look for a visible action button
+                visible_action = quick_actions_container.locator("button:visible").first
+                if visible_action.count() > 0:
+                    visible_action.click()
+                    page.wait_for_timeout(500)
+                    take_screenshot(page, "10a_quick_action_expanded")
+                else:
+                    print("Quick actions buttons not visible - may be collapsed")
         else:
             take_screenshot(page, "10_no_quick_actions")
             print("Quick actions panel not visible - may not have detected patterns")

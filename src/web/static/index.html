@@ -898,6 +898,9 @@ def example_function():
         // ===================
         let ws = null;
         let currentResultsData = null; // Store current results for export
+        let wsReviews = []; // Collect reviews during WebSocket streaming
+        let wsFixes = []; // Collect fixes during WebSocket streaming
+        let wsConsensus = null; // Store consensus during WebSocket streaming
         let isDark = localStorage.getItem('theme') === 'dark' ||
                      (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
@@ -1117,6 +1120,12 @@ def example_function():
                 case 'review':
                     updateAgentStatus(msg.data.agent_name, 'complete');
                     addReviewPanel(msg.data);
+                    // Collect review for later use
+                    wsReviews.push(msg.data);
+                    break;
+                case 'fix':
+                    // Collect fix as it arrives
+                    wsFixes.push(msg.data);
                     break;
                 case 'response':
                     addResponsePanel(msg.data);
@@ -1127,11 +1136,37 @@ def example_function():
                     votesSection.classList.remove('hidden');
                     break;
                 case 'consensus':
+                    wsConsensus = msg.data;
                     displayConsensys(msg.data);
                     break;
                 case 'complete':
                     statusSection.classList.add('hidden');
                     submitBtn.disabled = false;
+
+                    // Build currentResultsData for export functions
+                    const language = languageSelect.value;
+                    currentResultsData = {
+                        session_id: msg.data.session_id,
+                        decision: msg.data.decision,
+                        reviews: wsReviews,
+                        consensus: wsConsensus,
+                        code: codeInput.value,
+                        language: language,
+                        exportedAt: new Date().toISOString()
+                    };
+
+                    // Show export panel (BUG-003 fix)
+                    document.getElementById('export-panel').classList.remove('hidden');
+
+                    // Display suggested fixes panel (BUG-004 fix)
+                    displaySuggestedFixes(wsReviews, language);
+
+                    // Display quick actions panel
+                    displayQuickActions(wsReviews);
+
+                    // Display apply all fixes panel
+                    displayApplyAllFixes(codeInput.value, wsReviews, language);
+
                     showToast('Review complete!', 'success');
                     break;
                 case 'error':
@@ -1196,8 +1231,13 @@ def example_function():
             // Reset export panel and data
             document.getElementById('export-panel').classList.add('hidden');
             currentResultsData = null;
+            // Reset WebSocket state
+            wsReviews = [];
+            wsFixes = [];
+            wsConsensus = null;
             // Reset fixes panel
             document.getElementById('fixes-panel').classList.add('hidden');
+            document.getElementById('no-fixes-msg').classList.add('hidden');
             ['critical', 'high', 'medium', 'low'].forEach(severity => {
                 document.getElementById(`fixes-${severity}`).classList.add('hidden');
                 document.getElementById(`fixes-${severity}-content`).innerHTML = '';
@@ -1206,6 +1246,8 @@ def example_function():
             document.getElementById('apply-fixes-panel').classList.add('hidden');
             document.getElementById('all-fixed-code').textContent = '';
             document.getElementById('fixes-applied-items').innerHTML = '';
+            // Reset quick actions panel
+            document.getElementById('quick-actions-panel').classList.add('hidden');
         }
 
         function showAgentStatus() {
@@ -1452,9 +1494,11 @@ def example_function():
             const keyIssuesList = document.getElementById('key-issues-list');
             if (consensus.key_issues?.length) {
                 keyIssues.classList.remove('hidden');
-                keyIssuesList.innerHTML = consensus.key_issues.map(i =>
-                    `<li class="flex items-start text-sm"><span class="text-red-500 mr-2">*</span>${escapeHtml(i)}</li>`
-                ).join('');
+                // Handle both string and object key_issues
+                keyIssuesList.innerHTML = consensus.key_issues.map(i => {
+                    const issueText = typeof i === 'string' ? i : (i.description || JSON.stringify(i));
+                    return `<li class="flex items-start text-sm"><span class="text-red-500 mr-2">*</span>${escapeHtml(issueText)}</li>`;
+                }).join('');
             } else {
                 keyIssues.classList.add('hidden');
             }
