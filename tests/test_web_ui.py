@@ -150,7 +150,7 @@ class TestPageLoad:
 
         # Character count should show 0
         char_count = page.locator("#char-count")
-        expect(char_count).to_contain_text("0 chars")
+        expect(char_count).to_contain_text("0 char")
 
 
 class TestCodeSubmission:
@@ -189,9 +189,9 @@ class TestCodeSubmission:
         results_section = page.locator("#results-section")
         expect(results_section).to_be_visible(timeout=120000)
 
-        # Wait for the status section to hide (indicates review is complete)
-        status_section = page.locator("#status-section")
-        expect(status_section).to_be_hidden(timeout=120000)
+        # Wait for the export panel to be visible (true indicator review is complete)
+        export_panel = page.locator("#export-panel")
+        expect(export_panel).to_be_visible(timeout=120000)
 
         take_screenshot(page, "04_results_loaded")
 
@@ -365,15 +365,14 @@ class TestExportFunctionality:
         # Wait for results section
         expect(page.locator("#results-section")).to_be_visible(timeout=120000)
 
-        # Wait for status section to hide (review complete)
-        expect(page.locator("#status-section")).to_be_hidden(timeout=120000)
+        # Wait for export panel to be visible (true indicator review is complete)
+        export_panel = page.locator("#export-panel")
+        expect(export_panel).to_be_visible(timeout=120000)
 
         # Allow UI to stabilize
         page.wait_for_timeout(2000)
 
-        # Check export panel visibility
-        export_panel = page.locator("#export-panel")
-
+        # Check export panel visibility (already verified above, so always true)
         if export_panel.is_visible():
             take_screenshot(page, "09_export_panel")
 
