@@ -641,10 +641,12 @@
                 <!-- Logo Section -->
                 <div class="flex items-center gap-4">
                     <div class="hidden sm:block">
-                        <pre class="ascii-logo">   ___  ___  _  _  ___  ___  _  _  ___  _  _  ___
-  / __\/ _ \| \| |/ __\| __|| \| |/ __\| \| |/ __|
- | (__| (_) | .` |\__ \| _| | .` |\__ \| .` |\__ \
-  \___|\___/|_|\_||___/|___||_|\_||___/|_|\_||___/</pre>
+                        <pre class="ascii-logo"> ██████╗ ██████╗ ███╗   ██╗███████╗███████╗███╗   ██╗███████╗██╗   ██╗███████╗
+██╔════╝██╔═══██╗████╗  ██║██╔════╝██╔════╝████╗  ██║██╔════╝╚██╗ ██╔╝██╔════╝
+██║     ██║   ██║██╔██╗ ██║███████╗█████╗  ██╔██╗ ██║███████╗ ╚████╔╝ ███████╗
+██║     ██║   ██║██║╚██╗██║╚════██║██╔══╝  ██║╚██╗██║╚════██║  ╚██╔╝  ╚════██║
+╚██████╗╚██████╔╝██║ ╚████║███████║███████╗██║ ╚████║███████║   ██║   ███████║
+ ╚═════╝ ╚═════╝ ╚═╝  ╚═══╝╚══════╝╚══════╝╚═╝  ╚═══╝╚══════╝   ╚═╝   ╚══════╝</pre>
                     </div>
                     <div class="sm:hidden flex items-center gap-2">
                         <span class="text-lg font-bold" style="color: var(--term-green);">[</span>
@@ -673,6 +675,15 @@
                         </svg>
                         <svg class="w-5 h-5 moon-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
+                    <button id="sound-toggle" class="p-2 border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);" title="Toggle sound effects (Ctrl+M)">
+                        <svg class="w-5 h-5 sound-on-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                        </svg>
+                        <svg class="w-5 h-5 sound-off-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
                         </svg>
                     </button>
                 </div>
@@ -1060,6 +1071,10 @@ def vulnerable_function():
                             <span style="color: var(--term-text);">Toggle dark/light mode</span>
                             <kbd class="shortcut-key">⌘/Ctrl + D</kbd>
                         </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Toggle sound effects</span>
+                            <kbd class="shortcut-key">⌘/Ctrl + M</kbd>
+                        </div>
                     </div>
                 </div>
                 <!-- Navigation -->
@@ -1131,6 +1146,158 @@ def vulnerable_function():
         }
 
         // ===================
+        // Sound Effects System (V12-006)
+        // ===================
+        let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+        let audioContext = null;
+        let typingSoundEnabled = false; // Typing sounds off by default (optional)
+
+        // Initialize sound icons based on saved preference
+        if (!soundEnabled) {
+            document.querySelector('.sound-on-icon').classList.add('hidden');
+            document.querySelector('.sound-off-icon').classList.remove('hidden');
+        }
+
+        // Lazy-initialize AudioContext (required for browser audio policies)
+        function getAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            return audioContext;
+        }
+
+        // Play a click sound (short, subtle)
+        function playClickSound() {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(800, ctx.currentTime);
+                oscillator.frequency.exponentialRampToValueAtTime(400, ctx.currentTime + 0.05);
+
+                gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.05);
+
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + 0.05);
+            } catch (e) {
+                console.warn('Sound playback failed:', e);
+            }
+        }
+
+        // Play success chime (ascending notes for APPROVE)
+        function playSuccessSound() {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 (major chord)
+
+                notes.forEach((freq, i) => {
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+
+                    oscillator.type = 'sine';
+                    oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
+
+                    const startTime = ctx.currentTime + (i * 0.1);
+                    gainNode.gain.setValueAtTime(0, startTime);
+                    gainNode.gain.linearRampToValueAtTime(0.15, startTime + 0.02);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + 0.3);
+
+                    oscillator.start(startTime);
+                    oscillator.stop(startTime + 0.3);
+                });
+            } catch (e) {
+                console.warn('Sound playback failed:', e);
+            }
+        }
+
+        // Play warning tone (descending, minor feel for REJECT)
+        function playWarningSound() {
+            if (!soundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                const notes = [493.88, 392.00, 329.63]; // B4, G4, E4 (descending)
+
+                notes.forEach((freq, i) => {
+                    const oscillator = ctx.createOscillator();
+                    const gainNode = ctx.createGain();
+
+                    oscillator.connect(gainNode);
+                    gainNode.connect(ctx.destination);
+
+                    oscillator.type = 'sawtooth';
+                    oscillator.frequency.setValueAtTime(freq, ctx.currentTime);
+
+                    const startTime = ctx.currentTime + (i * 0.12);
+                    gainNode.gain.setValueAtTime(0, startTime);
+                    gainNode.gain.linearRampToValueAtTime(0.08, startTime + 0.02);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + 0.25);
+
+                    oscillator.start(startTime);
+                    oscillator.stop(startTime + 0.25);
+                });
+            } catch (e) {
+                console.warn('Sound playback failed:', e);
+            }
+        }
+
+        // Play typing sound (optional, very subtle)
+        function playTypingSound() {
+            if (!soundEnabled || !typingSoundEnabled) return;
+            try {
+                const ctx = getAudioContext();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                // Randomize pitch slightly for variety
+                const baseFreq = 200 + Math.random() * 100;
+                oscillator.type = 'square';
+                oscillator.frequency.setValueAtTime(baseFreq, ctx.currentTime);
+
+                gainNode.gain.setValueAtTime(0.02, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.02);
+
+                oscillator.start(ctx.currentTime);
+                oscillator.stop(ctx.currentTime + 0.02);
+            } catch (e) {
+                // Silently fail for typing sounds
+            }
+        }
+
+        // Toggle sound on/off
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            localStorage.setItem('soundEnabled', soundEnabled);
+
+            const soundOnIcon = document.querySelector('.sound-on-icon');
+            const soundOffIcon = document.querySelector('.sound-off-icon');
+
+            if (soundEnabled) {
+                soundOnIcon.classList.remove('hidden');
+                soundOffIcon.classList.add('hidden');
+                playClickSound(); // Play a click to confirm sound is on
+                showToast('[OK] sound effects enabled', 'success');
+            } else {
+                soundOnIcon.classList.add('hidden');
+                soundOffIcon.classList.remove('hidden');
+                showToast('[OK] sound effects disabled', 'info');
+            }
+        }
+
+        // ===================
         // DOM Elements
         // ===================
         const codeInput = document.getElementById('code-input');
@@ -1189,10 +1356,12 @@ def vulnerable_function():
         // ===================
         codeInput.addEventListener('input', () => {
             charCount.textContent = `${codeInput.value.length} chars`;
+            playTypingSound(); // Optional typing sound (disabled by default)
         });
 
         // Theme toggle uses the toggleTheme() function defined in keyboard shortcuts section
         document.getElementById('theme-toggle').addEventListener('click', () => {
+            playClickSound();
             // toggleTheme() is defined later in the file, but hoisted as a function declaration
             if (typeof toggleTheme === 'function') {
                 toggleTheme();
@@ -1215,7 +1384,13 @@ def vulnerable_function():
             }
         });
 
+        // Sound toggle button
+        document.getElementById('sound-toggle').addEventListener('click', () => {
+            toggleSound();
+        });
+
         document.getElementById('history-btn').addEventListener('click', async () => {
+            playClickSound();
             historyModal.classList.remove('hidden');
             await loadHistory();
         });
@@ -1231,6 +1406,7 @@ def vulnerable_function():
         });
 
         submitBtn.addEventListener('click', () => {
+            playClickSound();
             const code = codeInput.value.trim();
             if (!code) {
                 showToast('ERROR: no code provided', 'error');
@@ -1785,16 +1961,19 @@ def vulnerable_function():
                 badge.style.background = 'var(--term-green)';
                 badge.style.color = 'var(--term-bg)';
                 consensusPanel.style.borderColor = 'rgba(0, 255, 136, 0.5)';
+                playSuccessSound(); // Play success chime for APPROVE
             } else if (decision === 'REJECT') {
                 badge.textContent = 'REJECTED';
                 badge.style.background = 'var(--term-red)';
                 badge.style.color = 'var(--term-bg)';
                 consensusPanel.style.borderColor = 'rgba(255, 68, 68, 0.5)';
+                playWarningSound(); // Play warning tone for REJECT
             } else {
                 badge.textContent = 'REVIEW_NEEDED';
                 badge.style.background = 'var(--term-amber)';
                 badge.style.color = 'var(--term-bg)';
                 consensusPanel.style.borderColor = 'rgba(255, 170, 0, 0.5)';
+                playWarningSound(); // Play warning for review needed
             }
 
             document.getElementById('approve-count').textContent = consensus.vote_counts?.APPROVE || 0;
@@ -2778,6 +2957,13 @@ def vulnerable_function():
             if (e.key === 'e' || e.key === 'E') {
                 e.preventDefault();
                 showExportPanel();
+                return;
+            }
+
+            // Cmd/Ctrl + M - toggle sound effects
+            if (e.key === 'm' || e.key === 'M') {
+                e.preventDefault();
+                toggleSound();
                 return;
             }
 
