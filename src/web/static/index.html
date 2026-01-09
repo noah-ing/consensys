@@ -561,6 +561,69 @@
             color: var(--term-green);
         }
 
+        /* Keyboard shortcut key styling */
+        .shortcut-key {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--term-bg);
+            border: 1px solid var(--term-border);
+            color: var(--term-green);
+        }
+
+        /* Shortcut hint on buttons */
+        .shortcut-hint {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem;
+            padding: 0.125rem 0.25rem;
+            margin-left: 0.5rem;
+            background: var(--term-bg);
+            border: 1px solid var(--term-border);
+            color: var(--term-text-muted);
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+
+        *:hover > .shortcut-hint,
+        *:focus > .shortcut-hint {
+            opacity: 1;
+        }
+
+        /* Export dropdown styling */
+        .export-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.5rem;
+            padding: 0.5rem;
+            background: var(--term-bg-panel);
+            border: 1px solid var(--term-border);
+            z-index: 60;
+            min-width: 150px;
+        }
+
+        .export-dropdown.hidden {
+            display: none;
+        }
+
+        .export-dropdown button {
+            display: block;
+            width: 100%;
+            text-align: left;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.75rem;
+            color: var(--term-text-dim);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .export-dropdown button:hover {
+            background: var(--term-bg);
+            color: var(--term-text);
+        }
+
         /* Prism overrides */
         pre[class*="language-"],
         code[class*="language-"] {
@@ -596,12 +659,15 @@
 
                 <!-- Controls -->
                 <div class="flex items-center gap-2">
+                    <button id="shortcuts-btn" class="p-2 border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);" title="Keyboard shortcuts (?)">
+                        <span class="text-sm font-bold">?</span>
+                    </button>
                     <button id="history-btn" class="p-2 border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);" title="History">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </button>
-                    <button id="theme-toggle" class="p-2 border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);" title="Toggle theme">
+                    <button id="theme-toggle" class="p-2 border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);" title="Toggle theme (Ctrl+D)">
                         <svg class="w-5 h-5 sun-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
                         </svg>
@@ -672,11 +738,13 @@ def vulnerable_function():
                     id="submit-btn"
                     class="px-6 py-2 border-2 font-semibold text-sm transition-all flex items-center justify-center gap-2 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                     style="background: var(--term-green); border-color: var(--term-green); color: var(--term-bg);"
+                    title="Submit code for review (Ctrl+Enter)"
                 >
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                     </svg>
                     <span>EXECUTE</span>
+                    <span class="shortcut-hint">⌘↵</span>
                 </button>
             </div>
         </div>
@@ -957,6 +1025,83 @@ def vulnerable_function():
         </div>
     </div>
 
+    <!-- Keyboard Shortcuts Modal -->
+    <div id="shortcuts-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.8);">
+        <div class="border max-w-lg w-full max-h-[85vh] overflow-hidden fade-in" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+            <div class="p-4 border-b flex items-center justify-between" style="border-color: var(--term-border);">
+                <h2 class="text-sm font-semibold flex items-center" style="color: var(--term-green);">
+                    <span class="mr-2">&gt;</span>
+                    KEYBOARD_SHORTCUTS
+                </h2>
+                <button id="close-shortcuts" class="p-1 transition-colors" style="color: var(--term-text-dim);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-4 space-y-4 overflow-y-auto max-h-[calc(85vh-60px)]">
+                <!-- Actions -->
+                <div>
+                    <h3 class="text-xs font-semibold mb-2" style="color: var(--term-text-dim);">// ACTIONS</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Submit code for review</span>
+                            <kbd class="shortcut-key">⌘/Ctrl + Enter</kbd>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Clear input & focus</span>
+                            <kbd class="shortcut-key">⌘/Ctrl + K</kbd>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Show export options</span>
+                            <kbd class="shortcut-key">⌘/Ctrl + E</kbd>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Toggle dark/light mode</span>
+                            <kbd class="shortcut-key">⌘/Ctrl + D</kbd>
+                        </div>
+                    </div>
+                </div>
+                <!-- Navigation -->
+                <div class="pt-3 border-t" style="border-color: var(--term-border);">
+                    <h3 class="text-xs font-semibold mb-2" style="color: var(--term-text-dim);">// NAVIGATION</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Jump to Input</span>
+                            <kbd class="shortcut-key">⌘/Ctrl + 1</kbd>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Jump to Reviews</span>
+                            <kbd class="shortcut-key">⌘/Ctrl + 2</kbd>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Jump to Fixes</span>
+                            <kbd class="shortcut-key">⌘/Ctrl + 3</kbd>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Jump to Consensus</span>
+                            <kbd class="shortcut-key">⌘/Ctrl + 4</kbd>
+                        </div>
+                    </div>
+                </div>
+                <!-- Other -->
+                <div class="pt-3 border-t" style="border-color: var(--term-border);">
+                    <h3 class="text-xs font-semibold mb-2" style="color: var(--term-text-dim);">// OTHER</h3>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Show shortcuts (this menu)</span>
+                            <kbd class="shortcut-key">?</kbd>
+                        </div>
+                        <div class="flex items-center justify-between text-xs">
+                            <span style="color: var(--term-text);">Close modal / Escape</span>
+                            <kbd class="shortcut-key">Esc</kbd>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="mt-12 py-6 text-center border-t" style="border-color: var(--term-border);">
         <p class="text-xs" style="color: var(--term-text-muted);">
@@ -1046,20 +1191,27 @@ def vulnerable_function():
             charCount.textContent = `${codeInput.value.length} chars`;
         });
 
+        // Theme toggle uses the toggleTheme() function defined in keyboard shortcuts section
         document.getElementById('theme-toggle').addEventListener('click', () => {
-            isDark = !isDark;
-            if (isDark) {
-                document.documentElement.classList.add('dark');
-                document.documentElement.classList.remove('light');
-                document.querySelector('.sun-icon').classList.remove('hidden');
-                document.querySelector('.moon-icon').classList.add('hidden');
-                localStorage.setItem('theme', 'dark');
+            // toggleTheme() is defined later in the file, but hoisted as a function declaration
+            if (typeof toggleTheme === 'function') {
+                toggleTheme();
             } else {
-                document.documentElement.classList.remove('dark');
-                document.documentElement.classList.add('light');
-                document.querySelector('.sun-icon').classList.add('hidden');
-                document.querySelector('.moon-icon').classList.remove('hidden');
-                localStorage.setItem('theme', 'light');
+                // Fallback in case function isn't available yet
+                isDark = !isDark;
+                if (isDark) {
+                    document.documentElement.classList.add('dark');
+                    document.documentElement.classList.remove('light');
+                    document.querySelector('.sun-icon').classList.remove('hidden');
+                    document.querySelector('.moon-icon').classList.add('hidden');
+                    localStorage.setItem('theme', 'dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.documentElement.classList.add('light');
+                    document.querySelector('.sun-icon').classList.add('hidden');
+                    document.querySelector('.moon-icon').classList.remove('hidden');
+                    localStorage.setItem('theme', 'light');
+                }
             }
         });
 
@@ -2482,6 +2634,188 @@ def vulnerable_function():
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         }
+
+        // ===================
+        // Keyboard Shortcuts (V12-005)
+        // ===================
+        const shortcutsModal = document.getElementById('shortcuts-modal');
+        const shortcutsBtn = document.getElementById('shortcuts-btn');
+        const closeShortcuts = document.getElementById('close-shortcuts');
+
+        // Show/hide shortcuts modal
+        function showShortcutsModal() {
+            shortcutsModal.classList.remove('hidden');
+        }
+
+        function hideShortcutsModal() {
+            shortcutsModal.classList.add('hidden');
+        }
+
+        // Shortcuts button click
+        shortcutsBtn.addEventListener('click', showShortcutsModal);
+        closeShortcuts.addEventListener('click', hideShortcutsModal);
+
+        // Click outside modal to close
+        shortcutsModal.addEventListener('click', (e) => {
+            if (e.target === shortcutsModal) {
+                hideShortcutsModal();
+            }
+        });
+
+        // Toggle theme function (extracted for shortcut use)
+        function toggleTheme() {
+            isDark = !isDark;
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+                document.querySelector('.sun-icon').classList.remove('hidden');
+                document.querySelector('.moon-icon').classList.add('hidden');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                document.querySelector('.sun-icon').classList.add('hidden');
+                document.querySelector('.moon-icon').classList.remove('hidden');
+                localStorage.setItem('theme', 'light');
+            }
+        }
+
+        // Jump to section function
+        function jumpToSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            if (section && !section.classList.contains('hidden')) {
+                section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                // Flash the section briefly
+                section.style.outline = '2px solid var(--term-green)';
+                setTimeout(() => {
+                    section.style.outline = '';
+                }, 500);
+            }
+        }
+
+        // Clear and focus input
+        function clearAndFocusInput() {
+            codeInput.value = '';
+            contextInput.value = '';
+            charCount.textContent = '0 chars';
+            codeInput.focus();
+            showToast('[OK] input cleared', 'success');
+        }
+
+        // Show export panel (scroll to it)
+        function showExportPanel() {
+            const exportPanel = document.getElementById('export-panel');
+            if (exportPanel && !exportPanel.classList.contains('hidden')) {
+                exportPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                exportPanel.style.outline = '2px solid var(--term-green)';
+                setTimeout(() => {
+                    exportPanel.style.outline = '';
+                }, 500);
+            } else {
+                showToast('[INFO] no export available yet - run a review first', 'info');
+            }
+        }
+
+        // Check if any modal is open
+        function isAnyModalOpen() {
+            return !historyModal.classList.contains('hidden') ||
+                   !shortcutsModal.classList.contains('hidden');
+        }
+
+        // Close all modals
+        function closeAllModals() {
+            historyModal.classList.add('hidden');
+            shortcutsModal.classList.add('hidden');
+        }
+
+        // Global keyboard shortcut handler
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger shortcuts when typing in input fields (except for specific ones)
+            const isInputFocused = document.activeElement.tagName === 'INPUT' ||
+                                   document.activeElement.tagName === 'TEXTAREA';
+
+            // Escape key - close any open modal
+            if (e.key === 'Escape') {
+                if (isAnyModalOpen()) {
+                    closeAllModals();
+                    e.preventDefault();
+                }
+                return;
+            }
+
+            // ? key - show shortcuts modal (only when not typing)
+            if (e.key === '?' && !isInputFocused) {
+                showShortcutsModal();
+                e.preventDefault();
+                return;
+            }
+
+            // All other shortcuts require Cmd/Ctrl
+            if (!e.metaKey && !e.ctrlKey) return;
+
+            // Cmd/Ctrl + Enter - submit code (works even in textarea)
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                submitBtn.click();
+                return;
+            }
+
+            // Cmd/Ctrl + K - clear and focus input
+            if (e.key === 'k' || e.key === 'K') {
+                e.preventDefault();
+                clearAndFocusInput();
+                return;
+            }
+
+            // Cmd/Ctrl + D - toggle dark/light mode
+            if (e.key === 'd' || e.key === 'D') {
+                e.preventDefault();
+                toggleTheme();
+                return;
+            }
+
+            // Cmd/Ctrl + E - show export panel
+            if (e.key === 'e' || e.key === 'E') {
+                e.preventDefault();
+                showExportPanel();
+                return;
+            }
+
+            // Cmd/Ctrl + 1 - jump to input section
+            if (e.key === '1') {
+                e.preventDefault();
+                jumpToSection('input-section');
+                codeInput.focus();
+                return;
+            }
+
+            // Cmd/Ctrl + 2 - jump to reviews
+            if (e.key === '2') {
+                e.preventDefault();
+                const reviewsSection = document.getElementById('results-section');
+                if (reviewsSection && !reviewsSection.classList.contains('hidden')) {
+                    const reviewsContainer = document.getElementById('reviews-container');
+                    if (reviewsContainer) {
+                        reviewsContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+                return;
+            }
+
+            // Cmd/Ctrl + 3 - jump to fixes
+            if (e.key === '3') {
+                e.preventDefault();
+                jumpToSection('fixes-panel');
+                return;
+            }
+
+            // Cmd/Ctrl + 4 - jump to consensus
+            if (e.key === '4') {
+                e.preventDefault();
+                jumpToSection('consensus-panel');
+                return;
+            }
+        });
 
         // ===================
         // Initialize
