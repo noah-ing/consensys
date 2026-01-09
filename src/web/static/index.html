@@ -5,15 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CONSENSYS // Multi-Agent Code Review</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Prism.js for syntax highlighting -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
+    <!-- Prism.js for syntax highlighting - LAZY LOADED for performance -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" media="print" onload="this.media='all'" />
+    <noscript><link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" /></noscript>
     <style>
         /* ============================================
            CONSENSYS TERMINAL THEME
@@ -631,6 +625,95 @@
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.8125rem;
         }
+
+        /* ============================================
+           SKELETON LOADERS (V12-008)
+           Performance optimization - show loading state
+           ============================================ */
+        @keyframes skeleton-pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 0.7; }
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, var(--term-border) 25%, var(--term-border-bright) 50%, var(--term-border) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s ease-in-out infinite;
+        }
+
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .skeleton-text {
+            height: 0.875rem;
+            margin-bottom: 0.5rem;
+            border-radius: 2px;
+        }
+
+        .skeleton-text-sm {
+            height: 0.75rem;
+            margin-bottom: 0.375rem;
+            border-radius: 2px;
+        }
+
+        .skeleton-block {
+            height: 4rem;
+            border-radius: 2px;
+        }
+
+        .skeleton-panel {
+            border: 1px solid var(--term-border);
+            padding: 1rem;
+            background: var(--term-bg-panel);
+        }
+
+        .skeleton-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .skeleton-avatar {
+            width: 2rem;
+            height: 2rem;
+            border-radius: 2px;
+        }
+
+        .skeleton-title {
+            flex: 1;
+            height: 1rem;
+        }
+
+        .skeleton-badge {
+            width: 3rem;
+            height: 1.25rem;
+        }
+
+        /* Performance: GPU-accelerated animations */
+        .fade-in,
+        .terminal-line,
+        .pipeline-job,
+        .agent-panel {
+            will-change: transform, opacity;
+        }
+
+        /* Performance: Reduce repaints on scroll */
+        .terminal-log,
+        .diff-container,
+        .reviews-container {
+            contain: content;
+        }
+
+        /* Performance: Hardware acceleration for modals */
+        #history-modal,
+        #shortcuts-modal,
+        #share-modal {
+            transform: translateZ(0);
+            backface-visibility: hidden;
+        }
     </style>
 </head>
 <body class="min-h-screen transition-colors" style="background: var(--term-bg); color: var(--term-text);">
@@ -1152,6 +1235,150 @@ def vulnerable_function():
 
     <script>
         // ===================
+        // Performance Metrics (V12-008) - DEV MODE
+        // ===================
+        const PERF_DEV_MODE = localStorage.getItem('perfDebug') === 'true';
+        const perfMetrics = {
+            pageLoad: performance.now(),
+            interactions: [],
+            prismLoaded: false,
+            prismLoadTime: null
+        };
+
+        // Performance logging helper
+        function perfLog(action, startTime, details = {}) {
+            if (!PERF_DEV_MODE) return;
+            const duration = performance.now() - startTime;
+            const entry = {
+                action,
+                duration: Math.round(duration * 100) / 100,
+                timestamp: new Date().toISOString(),
+                ...details
+            };
+            perfMetrics.interactions.push(entry);
+            const color = duration < 100 ? '#00ff88' : duration < 300 ? '#ffaa00' : '#ff4444';
+            console.log(`%c[PERF] ${action}: ${entry.duration}ms`, `color: ${color}; font-weight: bold;`, details);
+            return entry;
+        }
+
+        // Track interaction response times
+        function trackInteraction(name, fn) {
+            const start = performance.now();
+            const result = fn();
+            perfLog(name, start);
+            return result;
+        }
+
+        // Get performance summary
+        function getPerfSummary() {
+            const totalLoad = performance.now() - perfMetrics.pageLoad;
+            const avgInteraction = perfMetrics.interactions.length > 0
+                ? perfMetrics.interactions.reduce((sum, i) => sum + i.duration, 0) / perfMetrics.interactions.length
+                : 0;
+            return {
+                totalLoadTime: Math.round(totalLoad),
+                interactionCount: perfMetrics.interactions.length,
+                avgInteractionTime: Math.round(avgInteraction * 100) / 100,
+                prismLoadTime: perfMetrics.prismLoadTime,
+                slowInteractions: perfMetrics.interactions.filter(i => i.duration > 100)
+            };
+        }
+
+        // Enable perf debug mode: localStorage.setItem('perfDebug', 'true'); location.reload();
+        if (PERF_DEV_MODE) {
+            console.log('%c[PERF] Performance monitoring ENABLED', 'color: #00ff88; font-weight: bold;');
+            console.log('%c[PERF] Use getPerfSummary() to view stats', 'color: #00d4ff;');
+            window.getPerfSummary = getPerfSummary;
+            window.perfMetrics = perfMetrics;
+        }
+
+        // ===================
+        // Lazy Load Prism.js (V12-008)
+        // ===================
+        let prismLoadPromise = null;
+
+        function loadPrism() {
+            if (prismLoadPromise) return prismLoadPromise;
+            if (window.Prism) {
+                perfMetrics.prismLoaded = true;
+                return Promise.resolve();
+            }
+
+            const startTime = performance.now();
+            prismLoadPromise = new Promise((resolve, reject) => {
+                const scripts = [
+                    'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-go.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js',
+                    'https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js'
+                ];
+
+                let loaded = 0;
+                const loadScript = (src) => {
+                    return new Promise((res, rej) => {
+                        const script = document.createElement('script');
+                        script.src = src;
+                        script.async = true;
+                        script.onload = res;
+                        script.onerror = rej;
+                        document.head.appendChild(script);
+                    });
+                };
+
+                // Load core first, then components
+                loadScript(scripts[0])
+                    .then(() => Promise.all(scripts.slice(1).map(loadScript)))
+                    .then(() => {
+                        perfMetrics.prismLoaded = true;
+                        perfMetrics.prismLoadTime = Math.round(performance.now() - startTime);
+                        if (PERF_DEV_MODE) {
+                            console.log(`%c[PERF] Prism.js loaded: ${perfMetrics.prismLoadTime}ms`, 'color: #00ff88;');
+                        }
+                        resolve();
+                    })
+                    .catch(reject);
+            });
+
+            return prismLoadPromise;
+        }
+
+        // Highlight code with lazy-loaded Prism
+        async function highlightCode(element) {
+            await loadPrism();
+            if (window.Prism && element) {
+                Prism.highlightElement(element);
+            }
+        }
+
+        async function highlightAll() {
+            await loadPrism();
+            if (window.Prism) {
+                Prism.highlightAll();
+            }
+        }
+
+        async function highlightAllUnder(container) {
+            await loadPrism();
+            if (window.Prism && container) {
+                Prism.highlightAllUnder(container);
+            }
+        }
+
+        // ===================
+        // Debounce Utility (V12-008)
+        // ===================
+        function debounce(fn, delay) {
+            let timeoutId;
+            return function(...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => fn.apply(this, args), delay);
+            };
+        }
+
+        // ===================
         // State Management
         // ===================
         let ws = null;
@@ -1379,8 +1606,15 @@ def vulnerable_function():
         // ===================
         // Event Listeners
         // ===================
-        codeInput.addEventListener('input', () => {
+        // Debounced character count update (V12-008) - prevents excessive DOM updates
+        const updateCharCount = debounce(() => {
+            const start = performance.now();
             charCount.textContent = `${codeInput.value.length} chars`;
+            perfLog('charCountUpdate', start);
+        }, 50);
+
+        codeInput.addEventListener('input', () => {
+            updateCharCount();
             playTypingSound(); // Optional typing sound (disabled by default)
         });
 
@@ -1502,11 +1736,14 @@ def vulnerable_function():
         // WebSocket Submission
         // ===================
         function submitWithWebSocket(code) {
+            const start = performance.now();
             resetResults();
+            showSkeletonLoaders(); // Show skeleton while waiting (V12-008)
             showAgentStatus();
             statusSection.classList.remove('hidden');
             resultsSection.classList.remove('hidden');
             submitBtn.disabled = true;
+            perfLog('submitStart', start, { mode: 'websocket' });
 
             const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
             ws = new WebSocket(`${protocol}//${location.host}/ws/review`);
@@ -1543,6 +1780,7 @@ def vulnerable_function():
                     statusText.textContent = msg.data.message.toUpperCase().replace(/ /g, '_');
                     break;
                 case 'review':
+                    hideSkeletonLoaders(); // Hide skeleton on first review (V12-008)
                     updateAgentStatus(msg.data.agent_name, 'complete');
                     addReviewPanel(msg.data);
                     wsReviews.push(msg.data);
@@ -1603,9 +1841,13 @@ def vulnerable_function():
         // API Submission
         // ===================
         async function submitWithAPI(code) {
+            const start = performance.now();
             resetResults();
+            showSkeletonLoaders(); // Show skeleton while waiting (V12-008)
             statusSection.classList.remove('hidden');
+            resultsSection.classList.remove('hidden');
             submitBtn.disabled = true;
+            perfLog('submitStart', start, { mode: 'api' });
 
             try {
                 statusText.textContent = 'SUBMITTING';
@@ -1624,12 +1866,15 @@ def vulnerable_function():
                 if (!res.ok) throw new Error('review failed: ' + res.statusText);
 
                 const data = await res.json();
+                hideSkeletonLoaders(); // Remove skeletons before displaying results (V12-008)
                 displayResults(data);
+                perfLog('submitComplete', start, { mode: 'api' });
                 showToast('[OK] review complete', 'success');
             } catch (err) {
                 statusText.textContent = 'ERROR';
                 statusDetail.textContent = err.message;
                 hideSpinner();
+                hideSkeletonLoaders();
             } finally {
                 submitBtn.disabled = false;
             }
@@ -1638,6 +1883,35 @@ def vulnerable_function():
         // ===================
         // UI Helpers
         // ===================
+
+        // Create skeleton loader for review panels (V12-008)
+        function createSkeletonReviewPanel() {
+            return `
+                <div class="skeleton-panel mb-4">
+                    <div class="skeleton-header">
+                        <div class="skeleton skeleton-avatar"></div>
+                        <div class="skeleton skeleton-title" style="width: 60%;"></div>
+                        <div class="skeleton skeleton-badge"></div>
+                    </div>
+                    <div class="skeleton skeleton-text" style="width: 90%;"></div>
+                    <div class="skeleton skeleton-text" style="width: 75%;"></div>
+                    <div class="skeleton skeleton-text" style="width: 85%;"></div>
+                    <div class="skeleton skeleton-text-sm" style="width: 50%;"></div>
+                </div>
+            `;
+        }
+
+        function showSkeletonLoaders() {
+            // Show 4 skeleton panels (one per agent)
+            reviewsContainer.innerHTML = [1, 2, 3, 4].map(() => createSkeletonReviewPanel()).join('');
+        }
+
+        function hideSkeletonLoaders() {
+            // Remove skeleton panels when real content arrives
+            const skeletons = reviewsContainer.querySelectorAll('.skeleton-panel');
+            skeletons.forEach(s => s.remove());
+        }
+
         function resetResults() {
             reviewsContainer.innerHTML = '';
             responsesContainer.innerHTML = '';
@@ -2084,7 +2358,7 @@ def vulnerable_function():
                 content.innerHTML = fixes.map((fix, idx) => createFixCard(fix, language, `${severity}-${idx}`)).join('');
             });
 
-            Prism.highlightAll();
+            highlightAll(); // Lazy-loaded Prism (V12-008)
         }
 
         function createFixCard(issue, language, id) {
@@ -2278,7 +2552,7 @@ def vulnerable_function():
             const prismLang = getPrismLanguage(language);
             codeEl.className = `language-${prismLang}`;
             codeEl.textContent = fixedCode;
-            Prism.highlightElement(codeEl);
+            highlightCode(codeEl); // Lazy-loaded Prism (V12-008)
 
             fixesList.innerHTML = appliedFixes.map(fix => `
                 <li class="flex items-start pl-2 border-l" style="border-color: ${getBorderColorForSeverity(fix.severity)};">
@@ -2552,7 +2826,7 @@ def vulnerable_function():
             if (content.classList.contains('hidden')) {
                 content.classList.remove('hidden');
                 chevron.style.transform = 'rotate(180deg)';
-                Prism.highlightAllUnder(content);
+                highlightAllUnder(content); // Lazy-loaded Prism (V12-008)
             } else {
                 content.classList.add('hidden');
                 chevron.style.transform = '';
@@ -2566,7 +2840,7 @@ def vulnerable_function():
             if (fixContent.classList.contains('hidden')) {
                 fixContent.classList.remove('hidden');
                 chevron.style.transform = 'rotate(90deg)';
-                Prism.highlightAllUnder(fixContent);
+                highlightAllUnder(fixContent); // Lazy-loaded Prism (V12-008)
             } else {
                 fixContent.classList.add('hidden');
                 chevron.style.transform = '';
