@@ -4,3 +4,4 @@ rich>=13.0.0
 sqlite-utils>=3.35
 python-dotenv>=1.0.0
 tenacity>=8.2.0
+qrcode>=7.4.0

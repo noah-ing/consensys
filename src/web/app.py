@@ -6,10 +6,14 @@ from typing import Optional, List, Dict, Any
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
+import qrcode
+import qrcode.image.svg
+import io
+import base64
 
 from src.db.storage import Storage
 from src.orchestrator.debate import DebateOrchestrator
@@ -451,6 +455,378 @@ async def get_session(session_id: str) -> SessionDetail:
         consensus=consensus_dict,
         fixes=fixes,
     )
+
+
+# Generate shareable link info
+class ShareLink(BaseModel):
+    """Shareable link for a review session."""
+    session_id: str
+    share_url: str
+    qr_code_svg: str
+
+
+@app.get("/api/sessions/{session_id}/share")
+async def get_share_link(session_id: str, request: Request) -> ShareLink:
+    """Generate a shareable link for a review session.
+
+    GET /api/sessions/{session_id}/share
+
+    Returns:
+        session_id: The session ID
+        share_url: Full URL to the session view page
+        qr_code_svg: SVG string of the QR code for the share URL
+    """
+    storage = get_storage()
+
+    # Verify session exists
+    session = storage.get_session(session_id)
+    if not session:
+        # Try partial match
+        sessions = storage.list_sessions(limit=100)
+        found = False
+        for s in sessions:
+            if s["session_id"].startswith(session_id):
+                session_id = s["session_id"]
+                found = True
+                break
+        if not found:
+            raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
+
+    # Build share URL based on request
+    base_url = str(request.base_url).rstrip('/')
+    share_url = f"{base_url}/session/{session_id}"
+
+    # Generate QR code as SVG
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=2,
+    )
+    qr.add_data(share_url)
+    qr.make(fit=True)
+
+    # Create SVG image
+    factory = qrcode.image.svg.SvgPathImage
+    img = qr.make_image(image_factory=factory)
+
+    # Convert to string
+    svg_buffer = io.BytesIO()
+    img.save(svg_buffer)
+    qr_svg = svg_buffer.getvalue().decode('utf-8')
+
+    return ShareLink(
+        session_id=session_id,
+        share_url=share_url,
+        qr_code_svg=qr_svg
+    )
+
+
+# Session view page (shareable read-only view)
+@app.get("/session/{session_id}", response_class=HTMLResponse)
+async def session_view(session_id: str, request: Request):
+    """Serve the read-only session view page.
+
+    GET /session/{session_id}
+
+    This page shows the full review results for anyone with the link.
+    It's read-only and doesn't require authentication.
+    """
+    storage = get_storage()
+
+    # Verify session exists (with partial matching)
+    session = storage.get_session(session_id)
+    if not session:
+        sessions = storage.list_sessions(limit=100)
+        for s in sessions:
+            if s["session_id"].startswith(session_id):
+                session_id = s["session_id"]
+                session = storage.get_session(session_id)
+                break
+
+    if not session:
+        return HTMLResponse(content=f"""
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session Not Found | CONSENSYS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+        :root {{
+            --term-bg: #0a0a0f;
+            --term-text: #e0e0e8;
+            --term-red: #ff4444;
+        }}
+        body {{ font-family: 'JetBrains Mono', monospace; background: var(--term-bg); color: var(--term-text); }}
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <div class="text-center p-8">
+        <h1 class="text-2xl mb-4" style="color: var(--term-red);">[ERROR] SESSION NOT FOUND</h1>
+        <p class="mb-4">Session ID: {session_id}</p>
+        <a href="/" class="underline">Return to home</a>
+    </div>
+</body>
+</html>
+        """, status_code=404)
+
+    # Get all session data
+    reviews = storage.get_reviews(session_id)
+    responses = storage.get_responses(session_id)
+    votes = storage.get_votes(session_id)
+    consensus = storage.get_consensus(session_id)
+
+    # Build data for frontend
+    import json
+
+    session_data = {
+        "session_id": session_id,
+        "code": session.get("code_snippet", ""),
+        "context": session.get("context"),
+        "created_at": session.get("created_at"),
+        "final_decision": session.get("final_decision"),
+        "reviews": [
+            {
+                "agent_name": r.agent_name,
+                "issues": r.issues,
+                "suggestions": r.suggestions,
+                "severity": r.severity,
+                "confidence": r.confidence,
+                "summary": r.summary,
+            }
+            for r in reviews
+        ],
+        "responses": [
+            {
+                "agent_name": r.agent_name,
+                "responding_to": r.responding_to,
+                "agreement_level": r.agreement_level.value if hasattr(r.agreement_level, 'value') else str(r.agreement_level),
+                "points": r.points,
+                "summary": r.summary,
+            }
+            for r in responses
+        ],
+        "votes": [
+            {
+                "agent_name": v.agent_name,
+                "decision": v.decision.value if hasattr(v.decision, 'value') else str(v.decision),
+                "reasoning": v.reasoning,
+            }
+            for v in votes
+        ],
+        "consensus": {
+            "decision": consensus.final_decision.value if hasattr(consensus.final_decision, 'value') else str(consensus.final_decision),
+            "vote_counts": consensus.vote_counts,
+            "key_issues": consensus.key_issues,
+            "accepted_suggestions": consensus.accepted_suggestions,
+        } if consensus else None,
+    }
+
+    session_json = json.dumps(session_data)
+
+    # Return a standalone page that displays the session
+    return HTMLResponse(content=f"""
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Session {session_id[:8]}... | CONSENSYS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+        :root {{
+            --term-bg: #0a0a0f;
+            --term-bg-elevated: #12121a;
+            --term-bg-panel: #16161f;
+            --term-border: #2a2a3a;
+            --term-green: #00ff88;
+            --term-amber: #ffaa00;
+            --term-red: #ff4444;
+            --term-cyan: #00d4ff;
+            --term-purple: #aa88ff;
+            --term-text: #e0e0e8;
+            --term-text-dim: #888899;
+        }}
+        body {{ font-family: 'JetBrains Mono', monospace; background: var(--term-bg); color: var(--term-text); }}
+        .severity-critical {{ color: var(--term-red); font-weight: 600; }}
+        .severity-high {{ color: #ff7744; font-weight: 500; }}
+        .severity-medium {{ color: var(--term-amber); }}
+        .severity-low {{ color: var(--term-green); }}
+    </style>
+</head>
+<body class="min-h-screen p-4 sm:p-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <header class="mb-8 pb-4 border-b" style="border-color: var(--term-border);">
+            <div class="flex items-center justify-between flex-wrap gap-4">
+                <div>
+                    <h1 class="text-xl font-bold" style="color: var(--term-green);">CONSENSYS // SHARED REVIEW</h1>
+                    <p class="text-xs mt-1" style="color: var(--term-text-dim);">
+                        Session: {session_id[:8]}... |
+                        Created: <span id="created-at"></span>
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="px-3 py-1 text-sm font-bold" id="verdict-badge"></span>
+                    <a href="/" class="px-3 py-1 text-xs border" style="border-color: var(--term-border); color: var(--term-text-dim);">
+                        &lt; HOME
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Code Section -->
+        <section class="mb-6 border p-4" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+            <h2 class="text-sm font-semibold mb-3" style="color: var(--term-cyan);">&gt; REVIEWED_CODE</h2>
+            <pre class="overflow-x-auto text-xs p-3" style="background: var(--term-bg);"><code id="code-display" class="language-python"></code></pre>
+        </section>
+
+        <!-- Consensus Section -->
+        <section id="consensus-section" class="mb-6 border p-4" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+            <h2 class="text-sm font-semibold mb-3" style="color: var(--term-purple);">&gt; CONSENSUS</h2>
+            <div id="consensus-content"></div>
+        </section>
+
+        <!-- Reviews Section -->
+        <section class="mb-6 border p-4" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+            <h2 class="text-sm font-semibold mb-3" style="color: var(--term-amber);">&gt; AGENT_REVIEWS</h2>
+            <div id="reviews-container" class="space-y-4"></div>
+        </section>
+
+        <!-- Votes Section -->
+        <section id="votes-section" class="mb-6 border p-4" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+            <h2 class="text-sm font-semibold mb-3" style="color: var(--term-green);">&gt; VOTES</h2>
+            <div id="votes-container" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="text-center text-xs py-4" style="color: var(--term-text-dim);">
+            Powered by <a href="/" class="underline">CONSENSYS</a> Multi-Agent Code Review
+        </footer>
+    </div>
+
+    <script>
+        const sessionData = {session_json};
+
+        // Format date
+        function formatDate(dateStr) {{
+            if (!dateStr) return 'Unknown';
+            const d = new Date(dateStr);
+            return d.toLocaleString();
+        }}
+
+        // Display session data
+        document.getElementById('created-at').textContent = formatDate(sessionData.created_at);
+        document.getElementById('code-display').textContent = sessionData.code || 'No code';
+        Prism.highlightElement(document.getElementById('code-display'));
+
+        // Verdict badge
+        const verdict = sessionData.consensus?.decision || sessionData.final_decision || 'PENDING';
+        const verdictBadge = document.getElementById('verdict-badge');
+        verdictBadge.textContent = verdict;
+        if (verdict === 'APPROVE') {{
+            verdictBadge.style.background = 'rgba(0, 255, 136, 0.2)';
+            verdictBadge.style.color = 'var(--term-green)';
+        }} else if (verdict === 'REJECT') {{
+            verdictBadge.style.background = 'rgba(255, 68, 68, 0.2)';
+            verdictBadge.style.color = 'var(--term-red)';
+        }} else {{
+            verdictBadge.style.background = 'rgba(255, 170, 0, 0.2)';
+            verdictBadge.style.color = 'var(--term-amber)';
+        }}
+
+        // Consensus
+        const consensusEl = document.getElementById('consensus-content');
+        if (sessionData.consensus) {{
+            const c = sessionData.consensus;
+            consensusEl.innerHTML = `
+                <div class="grid grid-cols-3 gap-4 mb-4">
+                    <div class="text-center p-3" style="background: rgba(0, 255, 136, 0.1);">
+                        <div class="text-2xl font-bold" style="color: var(--term-green);">${{c.vote_counts?.APPROVE || 0}}</div>
+                        <div class="text-xs" style="color: var(--term-text-dim);">APPROVE</div>
+                    </div>
+                    <div class="text-center p-3" style="background: rgba(255, 68, 68, 0.1);">
+                        <div class="text-2xl font-bold" style="color: var(--term-red);">${{c.vote_counts?.REJECT || 0}}</div>
+                        <div class="text-xs" style="color: var(--term-text-dim);">REJECT</div>
+                    </div>
+                    <div class="text-center p-3" style="background: rgba(255, 170, 0, 0.1);">
+                        <div class="text-2xl font-bold" style="color: var(--term-amber);">${{c.vote_counts?.ABSTAIN || 0}}</div>
+                        <div class="text-xs" style="color: var(--term-text-dim);">ABSTAIN</div>
+                    </div>
+                </div>
+                ${{c.key_issues?.length ? `
+                    <div class="mb-3">
+                        <h3 class="text-xs font-semibold mb-2" style="color: var(--term-red);">KEY ISSUES:</h3>
+                        <ul class="text-xs space-y-1" style="color: var(--term-text-dim);">
+                            ${{c.key_issues.map(i => `<li>• ${{i}}</li>`).join('')}}
+                        </ul>
+                    </div>
+                ` : ''}}
+                ${{c.accepted_suggestions?.length ? `
+                    <div>
+                        <h3 class="text-xs font-semibold mb-2" style="color: var(--term-green);">SUGGESTIONS:</h3>
+                        <ul class="text-xs space-y-1" style="color: var(--term-text-dim);">
+                            ${{c.accepted_suggestions.map(s => `<li>• ${{s}}</li>`).join('')}}
+                        </ul>
+                    </div>
+                ` : ''}}
+            `;
+        }} else {{
+            consensusEl.innerHTML = '<p class="text-xs" style="color: var(--term-text-dim);">No consensus data</p>';
+        }}
+
+        // Reviews
+        const reviewsEl = document.getElementById('reviews-container');
+        sessionData.reviews.forEach(review => {{
+            const severityClass = (review.severity || 'low').toLowerCase();
+            reviewsEl.innerHTML += `
+                <div class="border-l-2 p-3" style="border-color: var(--term-border); background: var(--term-bg);">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-semibold text-sm" style="color: var(--term-cyan);">${{review.agent_name}}</span>
+                        <span class="text-xs severity-${{severityClass}}">${{review.severity || 'LOW'}}</span>
+                    </div>
+                    ${{review.summary ? `<p class="text-xs mb-2" style="color: var(--term-text-dim);">${{review.summary}}</p>` : ''}}
+                    ${{review.issues?.length ? `
+                        <div class="text-xs space-y-1">
+                            ${{review.issues.map(issue => {{
+                                const i = typeof issue === 'string' ? {{ description: issue }} : issue;
+                                return `<div style="color: var(--term-text-dim);">• ${{i.description}}</div>`;
+                            }}).join('')}}
+                        </div>
+                    ` : '<p class="text-xs" style="color: var(--term-green);">No issues found</p>'}}
+                </div>
+            `;
+        }});
+
+        // Votes
+        const votesEl = document.getElementById('votes-container');
+        if (sessionData.votes?.length) {{
+            sessionData.votes.forEach(vote => {{
+                let color = 'var(--term-amber)';
+                if (vote.decision === 'APPROVE') color = 'var(--term-green)';
+                else if (vote.decision === 'REJECT') color = 'var(--term-red)';
+
+                votesEl.innerHTML += `
+                    <div class="p-3 text-center border" style="border-color: var(--term-border); background: var(--term-bg);">
+                        <div class="text-xs mb-1" style="color: var(--term-text-dim);">${{vote.agent_name}}</div>
+                        <div class="font-bold" style="color: ${{color}};">${{vote.decision}}</div>
+                    </div>
+                `;
+            }});
+        }} else {{
+            document.getElementById('votes-section').style.display = 'none';
+        }}
+    </script>
+</body>
+</html>
+    """)
 
 
 # WebSocket for streaming reviews

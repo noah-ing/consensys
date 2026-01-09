@@ -851,7 +851,7 @@ def vulnerable_function():
                         <span class="mr-2">&gt;</span>
                         EXPORT
                     </h2>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 flex-wrap">
                         <button onclick="exportAsMarkdown()" class="flex items-center px-3 py-1.5 text-xs font-medium border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);">
                             <span>--markdown</span>
                         </button>
@@ -861,7 +861,32 @@ def vulnerable_function():
                         <button onclick="exportAsGitHubIssue()" class="flex items-center px-3 py-1.5 text-xs font-medium border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);">
                             <span>--github</span>
                         </button>
+                        <button onclick="shareResults()" class="flex items-center px-3 py-1.5 text-xs font-medium border transition-colors hover:border-opacity-100" style="border-color: var(--term-cyan); color: var(--term-cyan);">
+                            <span>--share</span>
+                        </button>
                     </div>
+                </div>
+            </div>
+
+            <!-- Share Modal -->
+            <div id="share-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center" style="background: rgba(0, 0, 0, 0.8);">
+                <div class="border p-6 max-w-md w-full mx-4" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-semibold" style="color: var(--term-cyan);">&gt; SHARE_RESULTS</h2>
+                        <button onclick="hideShareModal()" class="text-xs" style="color: var(--term-text-dim);">[X]</button>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs mb-2" style="color: var(--term-text-dim);">Shareable Link:</label>
+                        <div class="flex items-center gap-2">
+                            <input id="share-url" type="text" readonly class="flex-1 px-3 py-2 text-xs border" style="background: var(--term-bg); border-color: var(--term-border); color: var(--term-text);">
+                            <button onclick="copyShareUrl()" class="px-3 py-2 text-xs border" style="border-color: var(--term-green); color: var(--term-green);">COPY</button>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-xs mb-2" style="color: var(--term-text-dim);">QR Code (scan to share):</label>
+                        <div id="qr-code-container" class="flex items-center justify-center p-4" style="background: white;"></div>
+                    </div>
+                    <p class="text-xs" style="color: var(--term-text-dim);">Anyone with this link can view the review results (read-only).</p>
                 </div>
             </div>
 
@@ -2815,6 +2840,66 @@ def vulnerable_function():
         }
 
         // ===================
+        // Share Functions (V12-007)
+        // ===================
+        const shareModal = document.getElementById('share-modal');
+
+        async function shareResults() {
+            if (!currentResultsData || !currentResultsData.session_id) {
+                showToast('ERROR: no session to share', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/sessions/${currentResultsData.session_id}/share`);
+                if (!response.ok) {
+                    throw new Error('Failed to get share link');
+                }
+
+                const data = await response.json();
+
+                // Set share URL
+                document.getElementById('share-url').value = data.share_url;
+
+                // Set QR code SVG
+                document.getElementById('qr-code-container').innerHTML = data.qr_code_svg;
+
+                // Style the QR code SVG
+                const qrSvg = document.querySelector('#qr-code-container svg');
+                if (qrSvg) {
+                    qrSvg.style.width = '200px';
+                    qrSvg.style.height = '200px';
+                }
+
+                // Show modal
+                shareModal.classList.remove('hidden');
+                playClickSound();
+            } catch (error) {
+                console.error('Share error:', error);
+                showToast('ERROR: ' + error.message, 'error');
+            }
+        }
+
+        function hideShareModal() {
+            shareModal.classList.add('hidden');
+        }
+
+        function copyShareUrl() {
+            const shareUrl = document.getElementById('share-url');
+            shareUrl.select();
+            document.execCommand('copy');
+            showToast('[OK] link copied to clipboard', 'success');
+            playClickSound();
+        }
+
+        // Close share modal on click outside
+        shareModal.addEventListener('click', (e) => {
+            if (e.target === shareModal) {
+                hideShareModal();
+            }
+        });
+
+        // ===================
         // Keyboard Shortcuts (V12-005)
         // ===================
         const shortcutsModal = document.getElementById('shortcuts-modal');
@@ -2898,13 +2983,15 @@ def vulnerable_function():
         // Check if any modal is open
         function isAnyModalOpen() {
             return !historyModal.classList.contains('hidden') ||
-                   !shortcutsModal.classList.contains('hidden');
+                   !shortcutsModal.classList.contains('hidden') ||
+                   !shareModal.classList.contains('hidden');
         }
 
         // Close all modals
         function closeAllModals() {
             historyModal.classList.add('hidden');
             shortcutsModal.classList.add('hidden');
+            shareModal.classList.add('hidden');
         }
 
         // Global keyboard shortcut handler
