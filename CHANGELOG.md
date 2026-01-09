@@ -5,6 +5,75 @@ All notable changes to Consensys will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-01-09
+
+### Added
+- **Comprehensive Playwright Test Suite** - Full end-to-end browser testing
+  - 12 automated tests covering all UI functionality
+  - Tests for code submission, agent responses, fixes panel, exports
+  - Mobile viewport testing (375px width)
+  - Dark mode testing
+  - Screenshots saved to docs/screenshots/
+- **Unique Terminal/Hacker UI Redesign** - Distinctive visual identity
+  - ASCII art logo header
+  - JetBrains Mono monospace font throughout
+  - Terminal color scheme (green, amber, red, cyan, purple)
+  - Sharp edges and intentional design over rounded-everything aesthetic
+  - Dark mode as primary (devs prefer dark)
+  - Light mode as secondary option
+- **CI/CD Pipeline-Style Status Display** - Live progress tracking
+  - Progress bar with percentage and timer
+  - Job cards for each agent showing running/success states
+  - Terminal log with timestamped entries
+  - Agent prefixes [SEC]/[PERF]/[ARCH]/[DEV]
+- **Terminal-Style Agent Output** - Reviews render like terminal output
+  - Command-line style headers ($ SEC_REVIEW --analyze)
+  - Tree-style prefixes for issues
+  - Severity badges (CRIT/HIGH/MED/LOW)
+  - Blinking cursor animation
+  - Typing/streaming effect for real-time feel
+- **Keyboard Shortcuts for Power Users**
+  - Cmd/Ctrl+Enter to submit code
+  - Cmd/Ctrl+K to clear and focus input
+  - Cmd/Ctrl+E to show export menu
+  - Cmd/Ctrl+D to toggle dark/light mode
+  - Cmd/Ctrl+1/2/3/4 to jump to sections
+  - ? key to show all shortcuts modal
+  - Shortcut hints on button hover
+- **Sound Effects (Optional)**
+  - Subtle click sound on button press
+  - Success chime (C-E-G arpeggio) for APPROVE verdict
+  - Warning tone (B-G-E descending) for REJECT verdict
+  - Optional typing sounds (disabled by default)
+  - Master toggle with Ctrl+M shortcut
+  - Web Audio API only - no external files
+  - Preferences saved to localStorage
+- **Real-Time Collaboration / Session Sharing**
+  - Shareable session links: /session/{session_id}
+  - Anyone with link can view results (read-only)
+  - Share Results button copies link to clipboard
+  - QR code generation for mobile sharing
+  - API: GET /api/sessions/{id}/share returns share_url and qr_code_svg
+- **Performance Optimizations**
+  - Skeleton loaders with shimmer animation while waiting
+  - Lazy-loaded Prism.js syntax highlighting (loads on demand)
+  - Debounced character count updates (50ms)
+  - GPU-accelerated CSS with will-change and transform3d
+  - Performance metrics in console (localStorage perfDebug mode)
+
+### Changed
+- Dark mode is now the default theme
+- UI uses monospace fonts throughout for code review tool aesthetic
+- Agent reviews display in terminal output style
+- Status section shows CI/CD pipeline-style progress
+
+### Fixed
+- Consensus panel visibility in quick mode
+- Reviews container timing issues
+- Export panel visibility detection
+- "No fixes" message display when no fixes found
+- Test reliability improvements with better wait conditions
+
 ## [0.1.3] - 2026-01-08
 
 ### Added
