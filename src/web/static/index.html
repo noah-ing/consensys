@@ -137,6 +137,185 @@
             60% { transform: translate(2px, 2px); }
             80% { transform: translate(2px, -2px); }
         }
+
+        /* ============================================
+           TERMINAL OUTPUT EFFECTS (V12-004)
+           ============================================ */
+
+        /* Typing effect for streaming content */
+        @keyframes typing-cursor {
+            0%, 100% { border-color: var(--term-green); }
+            50% { border-color: transparent; }
+        }
+
+        .terminal-output {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            overflow: hidden;
+        }
+
+        .terminal-line {
+            opacity: 0;
+            transform: translateX(-4px);
+            animation: line-appear 0.15s ease forwards;
+        }
+
+        @keyframes line-appear {
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        /* Staggered line animation for terminal feel */
+        .terminal-line:nth-child(1) { animation-delay: 0ms; }
+        .terminal-line:nth-child(2) { animation-delay: 50ms; }
+        .terminal-line:nth-child(3) { animation-delay: 100ms; }
+        .terminal-line:nth-child(4) { animation-delay: 150ms; }
+        .terminal-line:nth-child(5) { animation-delay: 200ms; }
+        .terminal-line:nth-child(6) { animation-delay: 250ms; }
+        .terminal-line:nth-child(7) { animation-delay: 300ms; }
+        .terminal-line:nth-child(8) { animation-delay: 350ms; }
+        .terminal-line:nth-child(9) { animation-delay: 400ms; }
+        .terminal-line:nth-child(10) { animation-delay: 450ms; }
+
+        /* Typing cursor that blinks */
+        .typing-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background: var(--term-green);
+            margin-left: 2px;
+            animation: cursor-blink 1s step-end infinite;
+        }
+
+        /* CI/CD Pipeline job status */
+        .pipeline-job {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--term-border);
+            background: var(--term-bg);
+            transition: all 0.2s ease;
+        }
+
+        .pipeline-job.running {
+            border-color: var(--term-amber);
+            background: rgba(255, 170, 0, 0.05);
+        }
+
+        .pipeline-job.running .job-indicator {
+            background: var(--term-amber);
+            animation: pulse 1s ease infinite;
+        }
+
+        .pipeline-job.success {
+            border-color: var(--term-green);
+            background: rgba(0, 255, 136, 0.05);
+        }
+
+        .pipeline-job.success .job-indicator {
+            background: var(--term-green);
+        }
+
+        .pipeline-job.pending .job-indicator {
+            background: var(--term-text-muted);
+        }
+
+        .job-indicator {
+            width: 6px;
+            height: 6px;
+            flex-shrink: 0;
+        }
+
+        /* Thinking cursor in agent card */
+        .thinking-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: var(--term-amber);
+            font-size: 0.7rem;
+        }
+
+        .thinking-indicator::after {
+            content: '';
+            display: inline-block;
+            width: 6px;
+            height: 12px;
+            background: var(--term-amber);
+            animation: cursor-blink 0.8s step-end infinite;
+        }
+
+        /* Terminal output log style */
+        .terminal-log {
+            background: var(--term-bg);
+            border: 1px solid var(--term-border);
+            padding: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .log-timestamp {
+            color: var(--term-text-muted);
+            margin-right: 0.5rem;
+        }
+
+        .log-level-info { color: var(--term-cyan); }
+        .log-level-warn { color: var(--term-amber); }
+        .log-level-error { color: var(--term-red); }
+        .log-level-success { color: var(--term-green); }
+
+        /* Progress bar for overall review */
+        .pipeline-progress {
+            height: 3px;
+            background: var(--term-border);
+            overflow: hidden;
+        }
+
+        .pipeline-progress-bar {
+            height: 100%;
+            background: var(--term-green);
+            transition: width 0.3s ease;
+        }
+
+        /* Agent card with terminal output */
+        .agent-terminal {
+            border-left: 2px solid var(--term-border);
+            padding-left: 0.75rem;
+            margin-top: 0.5rem;
+        }
+
+        .agent-terminal.active {
+            border-left-color: var(--term-amber);
+        }
+
+        .agent-terminal.complete {
+            border-left-color: var(--term-green);
+        }
+
+        /* Issue line with severity prefix */
+        .issue-line {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            padding: 0.25rem 0;
+        }
+
+        .issue-prefix {
+            flex-shrink: 0;
+            font-weight: 600;
+            font-size: 0.65rem;
+            padding: 0 0.25rem;
+        }
+
+        .issue-prefix.critical { background: var(--term-red); color: var(--term-bg); }
+        .issue-prefix.high { background: #ff7744; color: var(--term-bg); }
+        .issue-prefix.medium { background: var(--term-amber); color: var(--term-bg); }
+        .issue-prefix.low { background: var(--term-green); color: var(--term-bg); }
         .glitch-text:hover {
             animation: glitch 0.3s ease;
         }
@@ -502,20 +681,39 @@ def vulnerable_function():
             </div>
         </div>
 
-        <!-- Status Section -->
+        <!-- Status Section - CI/CD Pipeline Style -->
         <div id="status-section" class="hidden mb-6 fade-in">
-            <div class="border p-4 sm:p-6 terminal-loading" style="background: var(--term-bg-panel); border-color: var(--term-border);">
-                <div class="flex items-center gap-4">
-                    <div class="relative">
-                        <div class="w-8 h-8 border-2 animate-spin" style="border-color: var(--term-green); border-top-color: transparent;"></div>
+            <div class="border" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+                <!-- Pipeline Header -->
+                <div class="p-3 border-b flex items-center justify-between" style="border-color: var(--term-border);">
+                    <div class="flex items-center gap-3">
+                        <div class="relative">
+                            <div class="w-5 h-5 border-2 animate-spin" style="border-color: var(--term-green); border-top-color: transparent;"></div>
+                        </div>
+                        <div>
+                            <p id="status-text" class="text-xs font-semibold" style="color: var(--term-green);">PIPELINE_RUNNING</p>
+                            <p id="status-detail" class="text-xs" style="color: var(--term-text-muted);">multi-agent code review</p>
+                        </div>
                     </div>
-                    <div>
-                        <p id="status-text" class="text-sm font-semibold loading-dots" style="color: var(--term-green);">PROCESSING</p>
-                        <p id="status-detail" class="text-xs" style="color: var(--term-text-dim);">agents analyzing code</p>
+                    <span id="pipeline-timer" class="text-xs font-mono" style="color: var(--term-text-muted);">00:00</span>
+                </div>
+                <!-- Progress Bar -->
+                <div class="pipeline-progress">
+                    <div id="pipeline-progress-bar" class="pipeline-progress-bar" style="width: 0%;"></div>
+                </div>
+                <!-- Pipeline Jobs Grid -->
+                <div class="p-3">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2" id="agent-status-grid">
+                        <!-- Agent job cards rendered by JS -->
                     </div>
                 </div>
-                <div class="mt-4 grid grid-cols-4 gap-2" id="agent-status-grid">
-                    <!-- Agent status indicators -->
+                <!-- Terminal Log Output -->
+                <div id="terminal-log" class="terminal-log mx-3 mb-3">
+                    <div class="terminal-line" style="animation-delay: 0ms;">
+                        <span class="log-timestamp">[--:--:--]</span>
+                        <span class="log-level-info">[INIT]</span>
+                        <span style="color: var(--term-text-dim);">Starting code review pipeline...</span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1012,7 +1210,14 @@ def vulnerable_function():
                     displayConsensys(msg.data);
                     break;
                 case 'complete':
-                    statusSection.classList.add('hidden');
+                    stopPipelineTimer();
+                    addLogLine('DONE', 'success', `Pipeline complete - Decision: ${msg.data.decision}`);
+
+                    // Small delay before hiding status to let user see final log
+                    setTimeout(() => {
+                        statusSection.classList.add('hidden');
+                    }, 500);
+
                     submitBtn.disabled = false;
 
                     const language = languageSelect.value;
@@ -1105,33 +1310,141 @@ def vulnerable_function():
             document.getElementById('quick-actions-panel').classList.add('hidden');
         }
 
+        // Pipeline state
+        let pipelineStartTime = null;
+        let pipelineTimerInterval = null;
+        let completedAgents = 0;
+        const totalAgents = 4;
+
         function showAgentStatus() {
+            // Reset pipeline state
+            pipelineStartTime = Date.now();
+            completedAgents = 0;
+            updatePipelineProgress(0);
+
+            // Start timer
+            if (pipelineTimerInterval) clearInterval(pipelineTimerInterval);
+            pipelineTimerInterval = setInterval(updatePipelineTimer, 1000);
+            updatePipelineTimer();
+
+            // Reset terminal log
+            const terminalLog = document.getElementById('terminal-log');
+            terminalLog.innerHTML = '';
+            addLogLine('INIT', 'info', 'Initializing code review pipeline...');
+
             const agents = ['SecurityExpert', 'PerformanceEngineer', 'ArchitectureCritic', 'PragmaticDev'];
-            agentStatusGrid.innerHTML = agents.map(name => {
+            agentStatusGrid.innerHTML = agents.map((name, idx) => {
                 const config = agentConfig[name];
                 return `
-                    <div id="status-${name}" class="flex items-center gap-2 p-2 border" style="background: var(--term-bg); border-color: var(--term-border);">
-                        <div class="status-dot pending" data-status="pending"></div>
-                        <span class="text-xs font-medium truncate" style="color: ${config.color};">${config.prefix}</span>
+                    <div id="status-${name}" class="pipeline-job pending" data-agent="${name}">
+                        <div class="job-indicator"></div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between">
+                                <span class="text-xs font-semibold truncate" style="color: ${config.color};">${config.prefix}</span>
+                                <span class="text-xs" style="color: var(--term-text-muted);">queued</span>
+                            </div>
+                            <div class="thinking-indicator hidden" id="thinking-${name}">analyzing</div>
+                        </div>
                     </div>
                 `;
             }).join('');
+
+            // Stagger agent start animations
+            setTimeout(() => startAgent('SecurityExpert'), 100);
+            setTimeout(() => startAgent('PerformanceEngineer'), 200);
+            setTimeout(() => startAgent('ArchitectureCritic'), 300);
+            setTimeout(() => startAgent('PragmaticDev'), 400);
+        }
+
+        function startAgent(agentName) {
+            const el = document.getElementById(`status-${agentName}`);
+            const thinking = document.getElementById(`thinking-${agentName}`);
+            const config = agentConfig[agentName];
+
+            if (el) {
+                el.classList.remove('pending');
+                el.classList.add('running');
+                el.querySelector('.text-xs:last-of-type').textContent = 'running';
+            }
+            if (thinking) {
+                thinking.classList.remove('hidden');
+            }
+
+            addLogLine('RUN', 'info', `${config.prefix} Agent started...`);
         }
 
         function updateAgentStatus(agentName, status) {
             const el = document.getElementById(`status-${agentName}`);
-            if (el) {
-                const dot = el.querySelector('[data-status]');
-                if (status === 'complete') {
-                    dot.className = 'status-dot complete';
-                    dot.dataset.status = 'complete';
+            const thinking = document.getElementById(`thinking-${agentName}`);
+            const config = agentConfig[agentName];
+
+            if (el && status === 'complete') {
+                el.classList.remove('running', 'pending');
+                el.classList.add('success');
+                el.querySelector('.text-xs:last-of-type').textContent = 'done';
+
+                if (thinking) {
+                    thinking.classList.add('hidden');
                 }
+
+                completedAgents++;
+                updatePipelineProgress((completedAgents / totalAgents) * 100);
+                addLogLine('OK', 'success', `${config.prefix} Review complete`);
+
+                // Update status text based on completed agents
+                if (completedAgents < totalAgents) {
+                    document.getElementById('status-text').textContent = `ANALYZING_${completedAgents}/${totalAgents}`;
+                } else {
+                    document.getElementById('status-text').textContent = 'FINALIZING';
+                    addLogLine('SYNC', 'info', 'Building consensus from all reviews...');
+                }
+            }
+        }
+
+        function updatePipelineProgress(percent) {
+            const bar = document.getElementById('pipeline-progress-bar');
+            if (bar) bar.style.width = `${percent}%`;
+        }
+
+        function updatePipelineTimer() {
+            if (!pipelineStartTime) return;
+            const elapsed = Math.floor((Date.now() - pipelineStartTime) / 1000);
+            const mins = Math.floor(elapsed / 60).toString().padStart(2, '0');
+            const secs = (elapsed % 60).toString().padStart(2, '0');
+            const timerEl = document.getElementById('pipeline-timer');
+            if (timerEl) timerEl.textContent = `${mins}:${secs}`;
+        }
+
+        function addLogLine(level, type, message) {
+            const terminalLog = document.getElementById('terminal-log');
+            if (!terminalLog) return;
+
+            const now = new Date();
+            const timestamp = now.toTimeString().split(' ')[0];
+            const levelClass = `log-level-${type}`;
+
+            const line = document.createElement('div');
+            line.className = 'terminal-line';
+            line.innerHTML = `
+                <span class="log-timestamp">[${timestamp}]</span>
+                <span class="${levelClass}">[${level}]</span>
+                <span style="color: var(--term-text-dim);">${escapeHtml(message)}</span>
+            `;
+            terminalLog.appendChild(line);
+            terminalLog.scrollTop = terminalLog.scrollHeight;
+        }
+
+        function stopPipelineTimer() {
+            if (pipelineTimerInterval) {
+                clearInterval(pipelineTimerInterval);
+                pipelineTimerInterval = null;
             }
         }
 
         function hideSpinner() {
             const spinner = statusSection.querySelector('.animate-spin');
             if (spinner) spinner.parentElement.classList.add('hidden');
+            stopPipelineTimer();
         }
 
         function displayResults(data) {
@@ -1169,7 +1482,7 @@ def vulnerable_function():
         }
 
         // ===================
-        // Panel Builders
+        // Panel Builders - Terminal Style (V12-004)
         // ===================
         function addReviewPanel(review) {
             const config = agentConfig[review.agent_name] || {
@@ -1179,6 +1492,47 @@ def vulnerable_function():
                 prefix: '[AGT]'
             };
             const severityClass = `severity-${(review.severity || 'low').toLowerCase()}`;
+            const severityUpper = (review.severity || 'LOW').toUpperCase();
+
+            // Build terminal-style output lines
+            let outputLines = [];
+
+            // Header line
+            outputLines.push(`<div class="terminal-line" style="color: ${config.color}; font-weight: 600;">$ ${config.prefix.replace('[', '').replace(']', '')}_REVIEW --analyze</div>`);
+
+            // Status line
+            outputLines.push(`<div class="terminal-line"><span style="color: var(--term-text-muted);">├─</span> <span class="${severityClass}">SEVERITY: ${severityUpper}</span> <span style="color: var(--term-text-muted);">|</span> <span style="color: var(--term-cyan);">CONFIDENCE: ${Math.round((review.confidence || 0) * 100)}%</span></div>`);
+
+            // Issues section
+            if (review.issues?.length) {
+                outputLines.push(`<div class="terminal-line"><span style="color: var(--term-text-muted);">├─</span> <span style="color: var(--term-red);">[!] ISSUES_FOUND: ${review.issues.length}</span></div>`);
+                review.issues.forEach((issue, idx) => {
+                    const issueSeverity = (issue.severity || 'low').toLowerCase();
+                    const issueText = escapeHtml(issue.description || issue);
+                    const lineNum = issue.line ? ` <span style="color: var(--term-text-muted);">:${issue.line}</span>` : '';
+                    const prefix = idx === review.issues.length - 1 && !review.suggestions?.length ? '└─' : '│ ';
+                    outputLines.push(`<div class="terminal-line issue-line"><span style="color: var(--term-text-muted);">${prefix}</span><span class="issue-prefix ${issueSeverity}">${issueSeverity.toUpperCase().slice(0,4)}</span> <span style="color: var(--term-text-dim);">${issueText}</span>${lineNum}</div>`);
+                });
+            } else {
+                outputLines.push(`<div class="terminal-line"><span style="color: var(--term-text-muted);">├─</span> <span style="color: var(--term-green);">[✓] NO_ISSUES_DETECTED</span></div>`);
+            }
+
+            // Suggestions section
+            if (review.suggestions?.length) {
+                outputLines.push(`<div class="terminal-line"><span style="color: var(--term-text-muted);">├─</span> <span style="color: var(--term-amber);">[*] SUGGESTIONS: ${review.suggestions.length}</span></div>`);
+                review.suggestions.forEach((suggestion, idx) => {
+                    const prefix = idx === review.suggestions.length - 1 ? '└─' : '│ ';
+                    outputLines.push(`<div class="terminal-line"><span style="color: var(--term-text-muted);">${prefix}</span> <span style="color: var(--term-text-dim);">→ ${escapeHtml(suggestion)}</span></div>`);
+                });
+            }
+
+            // Summary line
+            if (review.summary) {
+                outputLines.push(`<div class="terminal-line" style="margin-top: 4px;"><span style="color: var(--term-text-muted);">// ${escapeHtml(review.summary)}</span></div>`);
+            }
+
+            // Complete marker
+            outputLines.push(`<div class="terminal-line"><span style="color: var(--term-green);">└─ ANALYSIS_COMPLETE</span><span class="typing-cursor"></span></div>`);
 
             const html = `
                 <div class="agent-panel border overflow-hidden fade-in" style="background: ${config.bgColor}; border-color: ${config.borderColor};">
@@ -1189,9 +1543,9 @@ def vulnerable_function():
                                 <div>
                                     <h3 class="text-sm font-semibold" style="color: var(--term-text);">${formatAgentName(review.agent_name)}</h3>
                                     <p class="text-xs">
-                                        <span class="${severityClass}">${review.severity || 'LOW'}</span>
+                                        <span class="${severityClass}">${severityUpper}</span>
                                         <span class="mx-1" style="color: var(--term-text-muted);">|</span>
-                                        <span style="color: var(--term-text-dim);">${Math.round((review.confidence || 0) * 100)}% conf</span>
+                                        <span style="color: var(--term-text-dim);">${review.issues?.length || 0} issues</span>
                                     </p>
                                 </div>
                             </div>
@@ -1200,37 +1554,22 @@ def vulnerable_function():
                             </svg>
                         </div>
                     </div>
-                    <div class="panel-content px-3 pb-3 space-y-3">
-                        ${review.issues?.length ? `
-                            <div>
-                                <h4 class="text-xs font-semibold mb-2" style="color: var(--term-red);">[!] ISSUES (${review.issues.length})</h4>
-                                <ul class="space-y-1 text-xs" style="color: var(--term-text-dim);">
-                                    ${review.issues.map(i => `
-                                        <li class="flex items-start pl-2 border-l" style="border-color: ${getBorderColorForSeverity(i.severity || 'low')};">
-                                            <span>${escapeHtml(i.description || i)}</span>
-                                            ${i.line ? `<span class="ml-1" style="color: var(--term-text-muted);">:${i.line}</span>` : ''}
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            </div>
-                        ` : '<p class="text-xs" style="color: var(--term-green);">[OK] no issues</p>'}
-                        ${review.suggestions?.length ? `
-                            <div>
-                                <h4 class="text-xs font-semibold mb-2" style="color: var(--term-amber);">[*] SUGGESTIONS</h4>
-                                <ul class="space-y-1 text-xs" style="color: var(--term-text-dim);">
-                                    ${review.suggestions.map(s => `<li class="flex items-start">- ${escapeHtml(s)}</li>`).join('')}
-                                </ul>
-                            </div>
-                        ` : ''}
-                        ${review.summary ? `
-                            <div class="pt-2 border-t" style="border-color: var(--term-border);">
-                                <p class="text-xs" style="color: var(--term-text-dim);">// ${escapeHtml(review.summary)}</p>
-                            </div>
-                        ` : ''}
+                    <div class="panel-content px-3 pb-3">
+                        <div class="terminal-output agent-terminal complete" style="background: var(--term-bg); border-color: ${config.borderColor};">
+                            ${outputLines.join('')}
+                        </div>
                     </div>
                 </div>
             `;
             reviewsContainer.insertAdjacentHTML('beforeend', html);
+
+            // Remove typing cursor after animation completes
+            setTimeout(() => {
+                const cursors = reviewsContainer.querySelectorAll('.typing-cursor');
+                if (cursors.length > 0) {
+                    cursors[cursors.length - 1].remove();
+                }
+            }, 800);
         }
 
         function addResponsePanel(response) {

@@ -126,7 +126,7 @@ class TestPageLoad:
 
         # Verify key elements exist
         title = page.title()
-        assert "Consensys" in title, f"Expected 'Consensys' in title, got '{title}'"
+        assert "CONSENSYS" in title.upper(), f"Expected 'CONSENSYS' in title, got '{title}'"
 
         # Check that the code input exists
         code_input = page.locator("#code-input")
@@ -150,7 +150,7 @@ class TestPageLoad:
 
         # Character count should show 0
         char_count = page.locator("#char-count")
-        expect(char_count).to_contain_text("0 characters")
+        expect(char_count).to_contain_text("0 chars")
 
 
 class TestCodeSubmission:
