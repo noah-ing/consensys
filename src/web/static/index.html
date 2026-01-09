@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consensys - Multi-Agent AI Code Review</title>
+    <title>CONSENSYS // Multi-Agent Code Review</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Prism.js for syntax highlighting -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
@@ -15,30 +15,135 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-rust.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-java.min.js"></script>
     <style>
-        /* Custom Tailwind config */
+        /* ============================================
+           CONSENSYS TERMINAL THEME
+           A professional dev tool aesthetic
+           ============================================ */
+
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
         :root {
-            --primary: #6366f1;
-            --primary-hover: #4f46e5;
+            /* Terminal color palette */
+            --term-bg: #0a0a0f;
+            --term-bg-elevated: #12121a;
+            --term-bg-panel: #16161f;
+            --term-border: #2a2a3a;
+            --term-border-bright: #3a3a4a;
+            --term-green: #00ff88;
+            --term-green-dim: #00cc6a;
+            --term-amber: #ffaa00;
+            --term-red: #ff4444;
+            --term-cyan: #00d4ff;
+            --term-purple: #aa88ff;
+            --term-text: #e0e0e8;
+            --term-text-dim: #888899;
+            --term-text-muted: #555566;
         }
 
-        /* Code editor styling */
+        /* Dark mode is primary - light mode is opt-in */
+        html:not(.light) {
+            background: var(--term-bg);
+            color-scheme: dark;
+        }
+
+        /* Monospace everything */
+        body, input, textarea, button, select {
+            font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+        }
+
+        /* Terminal-style code input */
         .code-input {
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
+            font-family: 'JetBrains Mono', 'Monaco', 'Menlo', monospace;
             tab-size: 4;
             resize: vertical;
-            line-height: 1.5;
+            line-height: 1.6;
+            letter-spacing: -0.02em;
         }
 
-        /* Prism theme overrides for dark mode */
-        .dark pre[class*="language-"],
-        .dark code[class*="language-"] {
-            background: #1e293b;
-            color: #e2e8f0;
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: var(--term-bg);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--term-border-bright);
+            border-radius: 0;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--term-text-muted);
         }
 
-        /* Collapsible panels */
+        /* Severity colors - terminal style */
+        .severity-critical { color: var(--term-red); font-weight: 600; text-transform: uppercase; }
+        .severity-high { color: #ff7744; font-weight: 500; text-transform: uppercase; }
+        .severity-medium { color: var(--term-amber); text-transform: uppercase; }
+        .severity-low { color: var(--term-green); text-transform: uppercase; }
+
+        /* Terminal cursor blink */
+        @keyframes cursor-blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0; }
+        }
+        .cursor-blink::after {
+            content: '_';
+            animation: cursor-blink 1s infinite;
+            color: var(--term-green);
+        }
+
+        /* Scan line effect for headers */
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+        .scanline::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--term-green), transparent);
+            opacity: 0.3;
+            animation: scanline 3s linear infinite;
+        }
+
+        /* Terminal loading animation */
+        @keyframes terminal-load {
+            0% { width: 0; }
+            100% { width: 100%; }
+        }
+        .terminal-loading {
+            position: relative;
+            overflow: hidden;
+        }
+        .terminal-loading::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 2px;
+            background: var(--term-green);
+            animation: terminal-load 2s ease-in-out infinite;
+        }
+
+        /* Glitch text effect for errors */
+        @keyframes glitch {
+            0%, 100% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+        }
+        .glitch-text:hover {
+            animation: glitch 0.3s ease;
+        }
+
+        /* Panel collapsible */
         .agent-panel {
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
         .agent-panel.collapsed .panel-content {
             max-height: 0;
@@ -50,121 +155,40 @@
         .agent-panel .panel-content {
             max-height: 2000px;
             opacity: 1;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
         .agent-panel.collapsed .chevron {
             transform: rotate(-90deg);
         }
         .chevron {
-            transition: transform 0.3s ease;
+            transition: transform 0.2s ease;
         }
 
-        /* Severity colors */
-        .severity-critical { color: #dc2626; font-weight: 600; }
-        .severity-high { color: #ea580c; font-weight: 500; }
-        .severity-medium { color: #ca8a04; }
-        .severity-low { color: #16a34a; }
-
-        /* Animations */
-        @keyframes pulse-glow {
-            0%, 100% { box-shadow: 0 0 5px rgba(99, 102, 241, 0.5); }
-            50% { box-shadow: 0 0 25px rgba(99, 102, 241, 0.8); }
-        }
-        .reviewing { animation: pulse-glow 2s infinite; }
-
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-        .skeleton {
-            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-        }
-        .dark .skeleton {
-            background: linear-gradient(90deg, #334155 25%, #475569 50%, #334155 75%);
-            background-size: 200% 100%;
-        }
-
-        /* Loading dots */
+        /* Loading dots - terminal style */
         .loading-dots::after {
             content: '';
-            animation: dots 1.5s infinite;
+            animation: dots 1s steps(3, end) infinite;
         }
         @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
+            0% { content: '.'; }
+            33% { content: '..'; }
+            66% { content: '...'; }
         }
 
-        /* Fade in animation */
+        /* Fade in */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
+            from { opacity: 0; transform: translateY(4px); }
             to { opacity: 1; transform: translateY(0); }
         }
         .fade-in {
-            animation: fadeIn 0.3s ease forwards;
-        }
-
-        /* Mobile improvements */
-        @media (max-width: 640px) {
-            .code-input {
-                font-size: 14px;
-            }
-            .vote-grid {
-                grid-template-columns: repeat(3, 1fr);
-            }
-        }
-
-        /* Scrollbar styling */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #94a3b8;
-            border-radius: 4px;
-        }
-        .dark ::-webkit-scrollbar-track {
-            background: #1e293b;
-        }
-        .dark ::-webkit-scrollbar-thumb {
-            background: #475569;
-        }
-
-        /* Tooltip */
-        .tooltip {
-            position: relative;
-        }
-        .tooltip::after {
-            content: attr(data-tip);
-            position: absolute;
-            bottom: 100%;
-            left: 50%;
-            transform: translateX(-50%);
-            padding: 4px 8px;
-            background: #1f2937;
-            color: white;
-            font-size: 12px;
-            border-radius: 4px;
-            white-space: nowrap;
-            opacity: 0;
-            visibility: hidden;
-            transition: all 0.2s;
-        }
-        .tooltip:hover::after {
-            opacity: 1;
-            visibility: visible;
+            animation: fadeIn 0.2s ease forwards;
         }
 
         /* Fix sections collapsible */
         .fixes-section .fixes-content {
             max-height: 2000px;
             opacity: 1;
-            transition: all 0.3s ease;
+            transition: all 0.2s ease;
         }
         .fixes-section.collapsed .fixes-content {
             max-height: 0;
@@ -176,42 +200,16 @@
             transform: rotate(-90deg);
         }
         [class*="chevron-"] {
-            transition: transform 0.3s ease;
+            transition: transform 0.2s ease;
         }
 
-        /* Fix card styling */
-        .fix-card {
-            border-radius: 0.75rem;
-            overflow: hidden;
-        }
-        .fix-card pre {
-            margin: 0;
-            border-radius: 0.5rem;
-        }
-        .fix-card code {
-            font-size: 0.875rem;
-            line-height: 1.5;
-        }
-
-        /* Copy button styling */
-        .copy-btn {
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-        .copy-btn:hover {
-            opacity: 1;
-        }
-        .copy-btn.copied {
-            color: #22c55e;
-        }
-
-        /* Diff View Styles */
+        /* Diff View Styles - Terminal aesthetic */
         .diff-container {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 0;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
-            font-size: 0.8125rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
             line-height: 1.5;
             overflow-x: auto;
         }
@@ -223,33 +221,22 @@
         .diff-header {
             padding: 0.5rem 1rem;
             font-weight: 600;
-            font-size: 0.75rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.05em;
+            letter-spacing: 0.1em;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .diff-header-removed {
-            background: #fef2f2;
-            color: #991b1b;
-            border-bottom: 1px solid #fecaca;
+            background: rgba(255, 68, 68, 0.1);
+            color: var(--term-red);
+            border-bottom: 1px solid rgba(255, 68, 68, 0.3);
         }
 
         .diff-header-added {
-            background: #f0fdf4;
-            color: #166534;
-            border-bottom: 1px solid #bbf7d0;
-        }
-
-        .dark .diff-header-removed {
-            background: rgba(127, 29, 29, 0.3);
-            color: #fca5a5;
-            border-bottom: 1px solid rgba(248, 113, 113, 0.3);
-        }
-
-        .dark .diff-header-added {
-            background: rgba(22, 101, 52, 0.3);
-            color: #86efac;
-            border-bottom: 1px solid rgba(74, 222, 128, 0.3);
+            background: rgba(0, 255, 136, 0.1);
+            color: var(--term-green);
+            border-bottom: 1px solid rgba(0, 255, 136, 0.3);
         }
 
         .diff-line {
@@ -262,16 +249,10 @@
             width: 3rem;
             padding: 0 0.5rem;
             text-align: right;
-            color: #94a3b8;
-            background: #f8fafc;
-            border-right: 1px solid #e2e8f0;
+            color: var(--term-text-muted);
+            background: var(--term-bg);
+            border-right: 1px solid var(--term-border);
             user-select: none;
-        }
-
-        .dark .diff-line-number {
-            background: #1e293b;
-            border-right: 1px solid #334155;
-            color: #64748b;
         }
 
         .diff-line-content {
@@ -282,238 +263,196 @@
         }
 
         .diff-line-removed {
-            background: #fef2f2;
+            background: rgba(255, 68, 68, 0.1);
         }
-
         .diff-line-removed .diff-line-content {
-            color: #991b1b;
-        }
-
-        .dark .diff-line-removed {
-            background: rgba(127, 29, 29, 0.2);
-        }
-
-        .dark .diff-line-removed .diff-line-content {
-            color: #fca5a5;
+            color: var(--term-red);
         }
 
         .diff-line-added {
-            background: #f0fdf4;
+            background: rgba(0, 255, 136, 0.1);
         }
-
         .diff-line-added .diff-line-content {
-            color: #166534;
-        }
-
-        .dark .diff-line-added {
-            background: rgba(22, 101, 52, 0.2);
-        }
-
-        .dark .diff-line-added .diff-line-content {
-            color: #86efac;
+            color: var(--term-green);
         }
 
         .diff-line-unchanged {
-            background: #ffffff;
+            background: var(--term-bg);
         }
-
-        .dark .diff-line-unchanged {
-            background: #0f172a;
-        }
-
         .diff-line-unchanged .diff-line-content {
-            color: #64748b;
-        }
-
-        .dark .diff-line-unchanged .diff-line-content {
-            color: #94a3b8;
+            color: var(--term-text-dim);
         }
 
         .diff-line-empty {
-            background: #f1f5f9;
+            background: var(--term-bg-elevated);
         }
 
-        .dark .diff-line-empty {
-            background: #1e293b;
-        }
-
-        /* Mobile responsive diff */
         @media (max-width: 768px) {
             .diff-container {
                 grid-template-columns: 1fr;
             }
-
             .diff-side {
-                border-bottom: 2px solid #e2e8f0;
+                border-bottom: 2px solid var(--term-border);
             }
-
-            .dark .diff-side {
-                border-bottom: 2px solid #334155;
-            }
-
             .diff-side:last-child {
                 border-bottom: none;
             }
+        }
 
-            .diff-line-number {
-                width: 2.5rem;
-                font-size: 0.7rem;
+        /* Diff toggle */
+        .diff-toggle-btn.active {
+            background: var(--term-green);
+            color: var(--term-bg);
+            border-color: var(--term-green);
+        }
+
+        .diff-view-wrapper { display: none; }
+        .diff-view-wrapper.visible { display: block; }
+        .code-view-wrapper { display: block; }
+        .code-view-wrapper.hidden { display: none; }
+
+        /* ASCII art styling */
+        .ascii-logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.5rem;
+            line-height: 1.1;
+            color: var(--term-green);
+            white-space: pre;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.5);
+        }
+
+        @media (max-width: 640px) {
+            .ascii-logo {
+                font-size: 0.35rem;
             }
         }
 
-        /* Diff toggle button */
-        .diff-toggle-btn {
-            transition: all 0.2s ease;
+        /* Terminal prompt style */
+        .terminal-prompt::before {
+            content: '>';
+            color: var(--term-green);
+            margin-right: 0.5rem;
+            font-weight: bold;
         }
 
-        .diff-toggle-btn.active {
-            background: #4f46e5;
-            color: white;
+        /* Status indicators */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 0;
+        }
+        .status-dot.pending {
+            background: var(--term-amber);
+            animation: pulse 2s ease infinite;
+        }
+        .status-dot.complete {
+            background: var(--term-green);
+        }
+        .status-dot.error {
+            background: var(--term-red);
         }
 
-        .diff-view-wrapper {
-            display: none;
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
         }
 
-        .diff-view-wrapper.visible {
-            display: block;
+        /* Toast notifications */
+        .toast {
+            backdrop-filter: blur(4px);
+            border: 1px solid var(--term-border);
         }
 
-        .code-view-wrapper {
-            display: block;
+        /* Light mode overrides */
+        .light {
+            --term-bg: #fafafa;
+            --term-bg-elevated: #ffffff;
+            --term-bg-panel: #f5f5f5;
+            --term-border: #e0e0e0;
+            --term-border-bright: #d0d0d0;
+            --term-green: #00aa55;
+            --term-green-dim: #008844;
+            --term-text: #1a1a1a;
+            --term-text-dim: #666666;
+            --term-text-muted: #999999;
         }
 
-        .code-view-wrapper.hidden {
-            display: none;
+        .light .ascii-logo {
+            text-shadow: none;
+            color: var(--term-green);
         }
 
-        /* Export dropdown styling */
-        .export-dropdown {
-            position: relative;
-            display: inline-block;
-        }
-
-        .export-dropdown-content {
-            display: none;
-            position: absolute;
-            right: 0;
-            top: 100%;
-            margin-top: 0.5rem;
-            background: white;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
-            min-width: 200px;
-            z-index: 50;
-            overflow: hidden;
-            border: 1px solid #e2e8f0;
-        }
-
-        .dark .export-dropdown-content {
-            background: #1e293b;
-            border-color: #334155;
-        }
-
-        .export-dropdown-content.show {
-            display: block;
-            animation: fadeIn 0.2s ease;
-        }
-
-        .export-dropdown-item {
-            display: flex;
-            align-items: center;
-            padding: 0.75rem 1rem;
-            color: #475569;
-            cursor: pointer;
-            transition: all 0.15s ease;
-        }
-
-        .dark .export-dropdown-item {
-            color: #94a3b8;
-        }
-
-        .export-dropdown-item:hover {
-            background: #f1f5f9;
-        }
-
-        .dark .export-dropdown-item:hover {
-            background: #334155;
-        }
-
-        .export-dropdown-item svg {
-            width: 1.25rem;
-            height: 1.25rem;
-            margin-right: 0.75rem;
-            flex-shrink: 0;
-        }
-
-        .export-dropdown-item span {
-            font-size: 0.875rem;
-            font-weight: 500;
-        }
-
-        .export-dropdown-divider {
-            height: 1px;
-            background: #e2e8f0;
-            margin: 0.25rem 0;
-        }
-
-        .dark .export-dropdown-divider {
-            background: #334155;
+        /* Prism overrides */
+        pre[class*="language-"],
+        code[class*="language-"] {
+            background: var(--term-bg) !important;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8125rem;
         }
     </style>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 transition-colors">
-    <!-- Header -->
-    <header class="bg-white/80 dark:bg-slate-800/80 backdrop-blur-md shadow-sm border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-            <div class="flex items-center space-x-3">
-                <div class="w-9 h-9 sm:w-10 sm:h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                    <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
+<body class="min-h-screen transition-colors" style="background: var(--term-bg); color: var(--term-text);">
+    <!-- Header with ASCII Art -->
+    <header class="border-b sticky top-0 z-40" style="background: var(--term-bg-elevated); border-color: var(--term-border);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 py-3">
+            <div class="flex items-center justify-between">
+                <!-- Logo Section -->
+                <div class="flex items-center gap-4">
+                    <div class="hidden sm:block">
+                        <pre class="ascii-logo">   ___  ___  _  _  ___  ___  _  _  ___  _  _  ___
+  / __\/ _ \| \| |/ __\| __|| \| |/ __\| \| |/ __|
+ | (__| (_) | .` |\__ \| _| | .` |\__ \| .` |\__ \
+  \___|\___/|_|\_||___/|___||_|\_||___/|_|\_||___/</pre>
+                    </div>
+                    <div class="sm:hidden flex items-center gap-2">
+                        <span class="text-lg font-bold" style="color: var(--term-green);">[</span>
+                        <span class="text-lg font-bold" style="color: var(--term-text);">CONSENSYS</span>
+                        <span class="text-lg font-bold" style="color: var(--term-green);">]</span>
+                    </div>
+                    <div class="hidden lg:block pl-4 border-l" style="border-color: var(--term-border);">
+                        <p class="text-xs" style="color: var(--term-text-dim);">// Multi-Agent AI Code Review</p>
+                        <p class="text-xs" style="color: var(--term-text-muted);">// v0.1.1</p>
+                    </div>
                 </div>
-                <div>
-                    <h1 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">Consensys</h1>
-                    <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 hidden sm:block">Multi-Agent AI Code Review</p>
+
+                <!-- Controls -->
+                <div class="flex items-center gap-2">
+                    <button id="history-btn" class="p-2 border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);" title="History">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </button>
+                    <button id="theme-toggle" class="p-2 border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);" title="Toggle theme">
+                        <svg class="w-5 h-5 sun-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                        </svg>
+                        <svg class="w-5 h-5 moon-icon hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
+                        </svg>
+                    </button>
                 </div>
-            </div>
-            <div class="flex items-center space-x-2 sm:space-x-3">
-                <button id="history-btn" class="tooltip p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" data-tip="History">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                </button>
-                <button id="theme-toggle" class="tooltip p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" data-tip="Toggle theme">
-                    <svg class="w-5 h-5 dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path>
-                    </svg>
-                    <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
-                    </svg>
-                </button>
             </div>
         </div>
     </header>
 
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         <!-- Input Section -->
-        <div id="input-section" class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 mb-6 sm:mb-8">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3">
-                <h2 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-                    </svg>
-                    Code to Review
+        <div id="input-section" class="border p-4 sm:p-6 mb-6" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+            <!-- Section Header -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-3 pb-3 border-b" style="border-color: var(--term-border);">
+                <h2 class="text-sm font-semibold flex items-center" style="color: var(--term-green);">
+                    <span class="mr-2">&gt;</span>
+                    INPUT_CODE
                 </h2>
-                <div class="flex items-center space-x-4">
-                    <label class="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
-                        <input type="checkbox" id="quick-mode" class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-500 focus:ring-indigo-500 dark:bg-slate-700">
-                        <span>Quick</span>
+                <div class="flex items-center gap-4">
+                    <label class="flex items-center gap-2 text-xs cursor-pointer" style="color: var(--term-text-dim);">
+                        <input type="checkbox" id="quick-mode" class="w-3 h-3 border-2 bg-transparent" style="border-color: var(--term-border); accent-color: var(--term-green);">
+                        <span>--quick</span>
                     </label>
-                    <label class="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400 cursor-pointer">
-                        <input type="checkbox" id="streaming-mode" checked class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-indigo-500 focus:ring-indigo-500 dark:bg-slate-700">
-                        <span>Stream</span>
+                    <label class="flex items-center gap-2 text-xs cursor-pointer" style="color: var(--term-text-dim);">
+                        <input type="checkbox" id="streaming-mode" checked class="w-3 h-3 border-2 bg-transparent" style="border-color: var(--term-border); accent-color: var(--term-green);">
+                        <span>--stream</span>
                     </label>
                 </div>
             </div>
@@ -521,375 +460,311 @@
             <!-- Language selector and code input -->
             <div class="mb-4">
                 <div class="flex items-center justify-between mb-2">
-                    <select id="language-select" class="text-sm bg-slate-100 dark:bg-slate-700 border-0 rounded-lg px-3 py-1.5 text-slate-700 dark:text-slate-300 focus:ring-2 focus:ring-indigo-500">
-                        <option value="python">Python</option>
-                        <option value="javascript">JavaScript</option>
-                        <option value="typescript">TypeScript</option>
-                        <option value="go">Go</option>
-                        <option value="rust">Rust</option>
-                        <option value="java">Java</option>
+                    <select id="language-select" class="text-xs px-2 py-1 border bg-transparent focus:outline-none" style="border-color: var(--term-border); color: var(--term-text);">
+                        <option value="python">python</option>
+                        <option value="javascript">javascript</option>
+                        <option value="typescript">typescript</option>
+                        <option value="go">go</option>
+                        <option value="rust">rust</option>
+                        <option value="java">java</option>
                     </select>
-                    <span id="char-count" class="text-xs text-slate-400">0 characters</span>
+                    <span id="char-count" class="text-xs" style="color: var(--term-text-muted);">0 chars</span>
                 </div>
-                <div class="relative">
-                    <textarea
-                        id="code-input"
-                        class="code-input w-full h-48 sm:h-64 p-4 bg-slate-900 dark:bg-slate-950 text-slate-100 border border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
-                        placeholder="# Paste your code here for AI review...
-def example_function():
+                <textarea
+                    id="code-input"
+                    class="code-input w-full h-48 sm:h-64 p-4 border text-sm focus:outline-none"
+                    style="background: var(--term-bg); border-color: var(--term-border); color: var(--term-text); caret-color: var(--term-green);"
+                    placeholder="# paste code here for review...
+def vulnerable_function():
     pass"
-                        spellcheck="false"
-                    ></textarea>
-                    <!-- Syntax highlight preview overlay (optional) -->
-                    <div id="highlight-preview" class="hidden absolute inset-0 pointer-events-none overflow-auto rounded-xl"></div>
-                </div>
+                    spellcheck="false"
+                ></textarea>
             </div>
 
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                 <input
                     type="text"
                     id="context-input"
-                    class="flex-1 px-4 py-2.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm text-slate-700 dark:text-slate-300 placeholder-slate-400"
-                    placeholder="Optional: Add context (e.g., 'This is authentication code')"
+                    class="flex-1 px-4 py-2 border text-sm focus:outline-none"
+                    style="background: var(--term-bg); border-color: var(--term-border); color: var(--term-text);"
+                    placeholder="--context='optional: describe code purpose'"
                 >
                 <button
                     id="submit-btn"
-                    class="px-6 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-medium rounded-xl hover:from-indigo-600 hover:to-purple-700 focus:ring-4 focus:ring-indigo-300 dark:focus:ring-indigo-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-indigo-500/25 flex items-center justify-center space-x-2"
+                    class="px-6 py-2 border-2 font-semibold text-sm transition-all flex items-center justify-center gap-2 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                    style="background: var(--term-green); border-color: var(--term-green); color: var(--term-bg);"
                 >
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                     </svg>
-                    <span>Start Review</span>
+                    <span>EXECUTE</span>
                 </button>
             </div>
         </div>
 
         <!-- Status Section -->
-        <div id="status-section" class="hidden mb-6 sm:mb-8 fade-in">
-            <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 reviewing">
-                <div class="flex items-center space-x-4">
+        <div id="status-section" class="hidden mb-6 fade-in">
+            <div class="border p-4 sm:p-6 terminal-loading" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+                <div class="flex items-center gap-4">
                     <div class="relative">
-                        <div class="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-                        <div class="absolute inset-0 w-10 h-10 border-4 border-purple-500 border-b-transparent rounded-full animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+                        <div class="w-8 h-8 border-2 animate-spin" style="border-color: var(--term-green); border-top-color: transparent;"></div>
                     </div>
                     <div>
-                        <p id="status-text" class="text-lg font-medium text-slate-900 dark:text-white loading-dots">Processing</p>
-                        <p id="status-detail" class="text-sm text-slate-500 dark:text-slate-400">AI agents are analyzing your code</p>
+                        <p id="status-text" class="text-sm font-semibold loading-dots" style="color: var(--term-green);">PROCESSING</p>
+                        <p id="status-detail" class="text-xs" style="color: var(--term-text-dim);">agents analyzing code</p>
                     </div>
                 </div>
                 <div class="mt-4 grid grid-cols-4 gap-2" id="agent-status-grid">
-                    <!-- Agent status indicators will be added here -->
+                    <!-- Agent status indicators -->
                 </div>
             </div>
         </div>
 
         <!-- Results Section -->
-        <div id="results-section" class="hidden space-y-6 sm:space-y-8">
-            <!-- Consensys Summary -->
-            <div id="consensus-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border-2 p-4 sm:p-6 fade-in">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center">
-                        <svg class="w-6 h-6 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                        </svg>
-                        Final Verdict
+        <div id="results-section" class="hidden space-y-6">
+            <!-- Consensus Panel -->
+            <div id="consensus-panel" class="hidden border p-4 sm:p-6 fade-in" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b" style="border-color: var(--term-border);">
+                    <h2 class="text-sm font-semibold flex items-center" style="color: var(--term-cyan);">
+                        <span class="mr-2">&gt;</span>
+                        VERDICT
                     </h2>
-                    <div id="decision-badge" class="px-5 py-2 rounded-full font-bold text-lg shadow-lg"></div>
+                    <div id="decision-badge" class="px-4 py-1 font-bold text-sm"></div>
                 </div>
 
                 <!-- Vote counts -->
-                <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
-                    <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-800">
-                        <span id="approve-count" class="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">0</span>
-                        <p class="text-xs sm:text-sm text-green-700 dark:text-green-300 font-medium">Approve</p>
+                <div class="grid grid-cols-3 gap-4 mb-6">
+                    <div class="text-center p-3 border" style="border-color: rgba(0, 255, 136, 0.3); background: rgba(0, 255, 136, 0.05);">
+                        <span id="approve-count" class="text-2xl font-bold" style="color: var(--term-green);">0</span>
+                        <p class="text-xs mt-1" style="color: var(--term-green);">APPROVE</p>
                     </div>
-                    <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/20 dark:to-rose-900/20 rounded-xl border border-red-200 dark:border-red-800">
-                        <span id="reject-count" class="text-2xl sm:text-3xl font-bold text-red-600 dark:text-red-400">0</span>
-                        <p class="text-xs sm:text-sm text-red-700 dark:text-red-300 font-medium">Reject</p>
+                    <div class="text-center p-3 border" style="border-color: rgba(255, 68, 68, 0.3); background: rgba(255, 68, 68, 0.05);">
+                        <span id="reject-count" class="text-2xl font-bold" style="color: var(--term-red);">0</span>
+                        <p class="text-xs mt-1" style="color: var(--term-red);">REJECT</p>
                     </div>
-                    <div class="text-center p-3 sm:p-4 bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-amber-900/20 dark:to-yellow-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
-                        <span id="abstain-count" class="text-2xl sm:text-3xl font-bold text-amber-600 dark:text-amber-400">0</span>
-                        <p class="text-xs sm:text-sm text-amber-700 dark:text-amber-300 font-medium">Abstain</p>
+                    <div class="text-center p-3 border" style="border-color: rgba(255, 170, 0, 0.3); background: rgba(255, 170, 0, 0.05);">
+                        <span id="abstain-count" class="text-2xl font-bold" style="color: var(--term-amber);">0</span>
+                        <p class="text-xs mt-1" style="color: var(--term-amber);">ABSTAIN</p>
                     </div>
                 </div>
 
                 <!-- Key issues and suggestions -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div id="key-issues" class="hidden">
-                        <h3 class="font-semibold text-slate-900 dark:text-white mb-2 flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                            </svg>
-                            Key Issues
+                        <h3 class="text-xs font-semibold mb-2 flex items-center" style="color: var(--term-red);">
+                            <span class="mr-2">[!]</span>
+                            KEY_ISSUES
                         </h3>
-                        <ul id="key-issues-list" class="space-y-1.5 text-sm text-slate-600 dark:text-slate-400"></ul>
+                        <ul id="key-issues-list" class="space-y-1 text-xs" style="color: var(--term-text-dim);"></ul>
                     </div>
                     <div id="suggestions" class="hidden">
-                        <h3 class="font-semibold text-slate-900 dark:text-white mb-2 flex items-center">
-                            <svg class="w-4 h-4 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-                            </svg>
-                            Accepted Suggestions
+                        <h3 class="text-xs font-semibold mb-2 flex items-center" style="color: var(--term-green);">
+                            <span class="mr-2">[+]</span>
+                            SUGGESTIONS
                         </h3>
-                        <ul id="suggestions-list" class="space-y-1.5 text-sm text-slate-600 dark:text-slate-400"></ul>
+                        <ul id="suggestions-list" class="space-y-1 text-xs" style="color: var(--term-text-dim);"></ul>
                     </div>
                 </div>
             </div>
 
-            <!-- Export Options Panel -->
-            <div id="export-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 fade-in">
+            <!-- Export Panel -->
+            <div id="export-panel" class="hidden border p-4 sm:p-6 fade-in" style="background: var(--term-bg-panel); border-color: var(--term-border);">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <h2 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path>
-                        </svg>
-                        Export Results
+                    <h2 class="text-sm font-semibold flex items-center" style="color: var(--term-purple);">
+                        <span class="mr-2">&gt;</span>
+                        EXPORT
                     </h2>
-                    <div class="flex items-center gap-2 sm:gap-3">
-                        <!-- Markdown Export -->
-                        <button onclick="exportAsMarkdown()" class="flex items-center px-3 py-2 text-sm font-medium rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                            <span class="hidden sm:inline">Markdown</span>
-                            <span class="sm:hidden">MD</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="exportAsMarkdown()" class="flex items-center px-3 py-1.5 text-xs font-medium border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);">
+                            <span>--markdown</span>
                         </button>
-                        <!-- JSON Export -->
-                        <button onclick="exportAsJSON()" class="flex items-center px-3 py-2 text-sm font-medium rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                            <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path>
-                            </svg>
-                            JSON
+                        <button onclick="exportAsJSON()" class="flex items-center px-3 py-1.5 text-xs font-medium border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);">
+                            <span>--json</span>
                         </button>
-                        <!-- GitHub Issue Export -->
-                        <button onclick="exportAsGitHubIssue()" class="flex items-center px-3 py-2 text-sm font-medium rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
-                            <svg class="w-4 h-4 mr-1.5" fill="currentColor" viewBox="0 0 24 24">
-                                <path fill-rule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.009-.866-.013-1.7-2.782.604-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" clip-rule="evenodd"></path>
-                            </svg>
-                            <span class="hidden sm:inline">GitHub Issue</span>
-                            <span class="sm:hidden">GH</span>
+                        <button onclick="exportAsGitHubIssue()" class="flex items-center px-3 py-1.5 text-xs font-medium border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-text-dim);">
+                            <span>--github</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            <!-- Suggested Fixes Panel -->
-            <div id="fixes-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 fade-in">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center">
-                        <svg class="w-6 h-6 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z"></path>
-                        </svg>
-                        Suggested Fixes
+            <!-- Fixes Panel -->
+            <div id="fixes-panel" class="hidden border p-4 sm:p-6 fade-in" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b" style="border-color: var(--term-border);">
+                    <h2 class="text-sm font-semibold flex items-center" style="color: var(--term-amber);">
+                        <span class="mr-2">&gt;</span>
+                        SUGGESTED_FIXES
                     </h2>
-                    <span id="fixes-count" class="px-3 py-1 rounded-full text-sm font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300"></span>
+                    <span id="fixes-count" class="px-2 py-0.5 text-xs font-medium" style="background: rgba(255, 170, 0, 0.1); color: var(--term-amber);"></span>
                 </div>
 
                 <!-- Critical Fixes -->
-                <div id="fixes-critical" class="fixes-section hidden mb-4">
-                    <div class="flex items-center justify-between p-3 bg-red-50 dark:bg-red-900/20 rounded-t-xl border border-red-200 dark:border-red-800 cursor-pointer" onclick="toggleFixesSection('critical')">
-                        <h3 class="font-semibold text-red-700 dark:text-red-300 flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                            </svg>
-                            Critical
-                            <span id="fixes-critical-count" class="ml-2 px-2 py-0.5 rounded-full text-xs bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200">0</span>
+                <div id="fixes-critical" class="fixes-section hidden mb-3">
+                    <div class="flex items-center justify-between p-2 cursor-pointer border-l-2" style="background: rgba(255, 68, 68, 0.05); border-color: var(--term-red);" onclick="toggleFixesSection('critical')">
+                        <h3 class="text-xs font-semibold flex items-center" style="color: var(--term-red);">
+                            <span class="mr-2">[!!]</span>
+                            CRITICAL
+                            <span id="fixes-critical-count" class="ml-2 px-1.5 py-0.5 text-xs" style="background: rgba(255, 68, 68, 0.2);">0</span>
                         </h3>
-                        <svg class="chevron-critical w-5 h-5 text-red-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="chevron-critical w-4 h-4 transition-transform" style="color: var(--term-red);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </div>
-                    <div id="fixes-critical-content" class="border-x border-b border-red-200 dark:border-red-800 rounded-b-xl p-4 space-y-4 bg-white dark:bg-slate-800"></div>
+                    <div id="fixes-critical-content" class="fixes-content border-l-2 p-3 space-y-3" style="background: var(--term-bg); border-color: var(--term-red);"></div>
                 </div>
 
                 <!-- High Fixes -->
-                <div id="fixes-high" class="fixes-section hidden mb-4">
-                    <div class="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 rounded-t-xl border border-orange-200 dark:border-orange-800 cursor-pointer" onclick="toggleFixesSection('high')">
-                        <h3 class="font-semibold text-orange-700 dark:text-orange-300 flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            High
-                            <span id="fixes-high-count" class="ml-2 px-2 py-0.5 rounded-full text-xs bg-orange-200 dark:bg-orange-800 text-orange-800 dark:text-orange-200">0</span>
+                <div id="fixes-high" class="fixes-section hidden mb-3">
+                    <div class="flex items-center justify-between p-2 cursor-pointer border-l-2" style="background: rgba(255, 119, 68, 0.05); border-color: #ff7744;" onclick="toggleFixesSection('high')">
+                        <h3 class="text-xs font-semibold flex items-center" style="color: #ff7744;">
+                            <span class="mr-2">[!]</span>
+                            HIGH
+                            <span id="fixes-high-count" class="ml-2 px-1.5 py-0.5 text-xs" style="background: rgba(255, 119, 68, 0.2);">0</span>
                         </h3>
-                        <svg class="chevron-high w-5 h-5 text-orange-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="chevron-high w-4 h-4 transition-transform" style="color: #ff7744;" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </div>
-                    <div id="fixes-high-content" class="border-x border-b border-orange-200 dark:border-orange-800 rounded-b-xl p-4 space-y-4 bg-white dark:bg-slate-800"></div>
+                    <div id="fixes-high-content" class="fixes-content border-l-2 p-3 space-y-3" style="background: var(--term-bg); border-color: #ff7744;"></div>
                 </div>
 
                 <!-- Medium Fixes -->
-                <div id="fixes-medium" class="fixes-section hidden mb-4">
-                    <div class="flex items-center justify-between p-3 bg-amber-50 dark:bg-amber-900/20 rounded-t-xl border border-amber-200 dark:border-amber-800 cursor-pointer" onclick="toggleFixesSection('medium')">
-                        <h3 class="font-semibold text-amber-700 dark:text-amber-300 flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Medium
-                            <span id="fixes-medium-count" class="ml-2 px-2 py-0.5 rounded-full text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200">0</span>
+                <div id="fixes-medium" class="fixes-section hidden mb-3">
+                    <div class="flex items-center justify-between p-2 cursor-pointer border-l-2" style="background: rgba(255, 170, 0, 0.05); border-color: var(--term-amber);" onclick="toggleFixesSection('medium')">
+                        <h3 class="text-xs font-semibold flex items-center" style="color: var(--term-amber);">
+                            <span class="mr-2">[*]</span>
+                            MEDIUM
+                            <span id="fixes-medium-count" class="ml-2 px-1.5 py-0.5 text-xs" style="background: rgba(255, 170, 0, 0.2);">0</span>
                         </h3>
-                        <svg class="chevron-medium w-5 h-5 text-amber-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="chevron-medium w-4 h-4 transition-transform" style="color: var(--term-amber);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </div>
-                    <div id="fixes-medium-content" class="border-x border-b border-amber-200 dark:border-amber-800 rounded-b-xl p-4 space-y-4 bg-white dark:bg-slate-800"></div>
+                    <div id="fixes-medium-content" class="fixes-content border-l-2 p-3 space-y-3" style="background: var(--term-bg); border-color: var(--term-amber);"></div>
                 </div>
 
                 <!-- Low Fixes -->
-                <div id="fixes-low" class="fixes-section hidden mb-4">
-                    <div class="flex items-center justify-between p-3 bg-green-50 dark:bg-green-900/20 rounded-t-xl border border-green-200 dark:border-green-800 cursor-pointer" onclick="toggleFixesSection('low')">
-                        <h3 class="font-semibold text-green-700 dark:text-green-300 flex items-center">
-                            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                            </svg>
-                            Low
-                            <span id="fixes-low-count" class="ml-2 px-2 py-0.5 rounded-full text-xs bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200">0</span>
+                <div id="fixes-low" class="fixes-section hidden mb-3">
+                    <div class="flex items-center justify-between p-2 cursor-pointer border-l-2" style="background: rgba(0, 255, 136, 0.05); border-color: var(--term-green);" onclick="toggleFixesSection('low')">
+                        <h3 class="text-xs font-semibold flex items-center" style="color: var(--term-green);">
+                            <span class="mr-2">[-]</span>
+                            LOW
+                            <span id="fixes-low-count" class="ml-2 px-1.5 py-0.5 text-xs" style="background: rgba(0, 255, 136, 0.2);">0</span>
                         </h3>
-                        <svg class="chevron-low w-5 h-5 text-green-500 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg class="chevron-low w-4 h-4 transition-transform" style="color: var(--term-green);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                         </svg>
                     </div>
-                    <div id="fixes-low-content" class="border-x border-b border-green-200 dark:border-green-800 rounded-b-xl p-4 space-y-4 bg-white dark:bg-slate-800"></div>
+                    <div id="fixes-low-content" class="fixes-content border-l-2 p-3 space-y-3" style="background: var(--term-bg); border-color: var(--term-green);"></div>
                 </div>
 
                 <!-- No Fixes Message -->
-                <div id="no-fixes-msg" class="hidden text-center py-8 text-slate-500 dark:text-slate-400">
-                    <svg class="w-12 h-12 mx-auto mb-3 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <p class="font-medium">No fixes needed!</p>
-                    <p class="text-sm mt-1">All agents found your code to be acceptable.</p>
+                <div id="no-fixes-msg" class="hidden text-center py-6" style="color: var(--term-text-dim);">
+                    <p class="text-sm" style="color: var(--term-green);">[OK] NO_FIXES_REQUIRED</p>
+                    <p class="text-xs mt-1">all agents found code acceptable</p>
                 </div>
             </div>
 
             <!-- Quick Actions Panel -->
-            <div id="quick-actions-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 fade-in">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center">
-                        <svg class="w-6 h-6 mr-2 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
-                        </svg>
-                        Quick Actions
+            <div id="quick-actions-panel" class="hidden border p-4 sm:p-6 fade-in" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b" style="border-color: var(--term-border);">
+                    <h2 class="text-sm font-semibold flex items-center" style="color: var(--term-cyan);">
+                        <span class="mr-2">&gt;</span>
+                        PATTERNS_DETECTED
                     </h2>
-                    <span id="quick-actions-count" class="px-3 py-1 rounded-full text-sm font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"></span>
+                    <span id="quick-actions-count" class="px-2 py-0.5 text-xs font-medium" style="background: rgba(0, 212, 255, 0.1); color: var(--term-cyan);"></span>
                 </div>
-
-                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                    Common security patterns detected. Click to view fix implementation and documentation.
+                <p class="text-xs mb-4" style="color: var(--term-text-dim);">
+                    // common security patterns detected - click to view fixes and documentation
                 </p>
-
-                <!-- Quick Action Categories -->
-                <div id="quick-actions-container" class="space-y-4">
-                    <!-- Categories will be populated dynamically -->
-                </div>
+                <div id="quick-actions-container" class="space-y-3"></div>
             </div>
 
             <!-- Apply All Fixes Panel -->
-            <div id="apply-fixes-panel" class="hidden bg-white dark:bg-slate-800 rounded-2xl shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50 border border-slate-200 dark:border-slate-700 p-4 sm:p-6 fade-in">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                    <h2 class="text-xl font-bold text-slate-900 dark:text-white flex items-center">
-                        <svg class="w-6 h-6 mr-2 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
-                        </svg>
-                        Apply All Fixes
+            <div id="apply-fixes-panel" class="hidden border p-4 sm:p-6 fade-in" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b" style="border-color: var(--term-border);">
+                    <h2 class="text-sm font-semibold flex items-center" style="color: var(--term-green);">
+                        <span class="mr-2">&gt;</span>
+                        PATCHED_CODE
                     </h2>
                     <div class="flex items-center gap-3">
-                        <span id="applied-fixes-count" class="px-3 py-1 rounded-full text-sm font-medium bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"></span>
-                        <button onclick="copyAllFixedCode()" id="copy-all-fixes-btn" class="flex items-center px-4 py-2 text-sm font-medium rounded-xl bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/25 transition-all">
+                        <span id="applied-fixes-count" class="px-2 py-0.5 text-xs font-medium" style="background: rgba(0, 255, 136, 0.1); color: var(--term-green);"></span>
+                        <button onclick="copyAllFixedCode()" id="copy-all-fixes-btn" class="flex items-center px-4 py-1.5 text-xs font-semibold border-2 transition-all" style="background: var(--term-green); border-color: var(--term-green); color: var(--term-bg);">
                             <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                             </svg>
-                            Copy Fixed Code
+                            COPY
                         </button>
                     </div>
                 </div>
-
-                <!-- Description -->
-                <p class="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                    Below is your code with all suggested fixes applied. Review the changes and copy when ready.
+                <p class="text-xs mb-4" style="color: var(--term-text-dim);">
+                    // code with all suggested fixes applied
                 </p>
-
-                <!-- Fixed Code Display -->
                 <div class="relative">
-                    <div class="absolute top-3 left-3 flex items-center gap-2 z-10">
-                        <span class="px-2 py-1 rounded-md text-xs font-medium bg-slate-700/80 text-slate-300">Fixed Version</span>
-                    </div>
-                    <pre class="!mt-0 rounded-xl overflow-hidden"><code id="all-fixed-code" class="language-python"></code></pre>
+                    <pre class="!mt-0 overflow-hidden border" style="border-color: var(--term-border);"><code id="all-fixed-code" class="language-python"></code></pre>
                 </div>
-
-                <!-- Fixes Applied List -->
-                <div id="fixes-applied-list" class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2 flex items-center">
-                        <svg class="w-4 h-4 mr-1.5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                        </svg>
-                        Fixes Applied
+                <div id="fixes-applied-list" class="mt-4 pt-4 border-t" style="border-color: var(--term-border);">
+                    <h3 class="text-xs font-semibold mb-2 flex items-center" style="color: var(--term-green);">
+                        <span class="mr-2">[+]</span>
+                        APPLIED_FIXES
                     </h3>
-                    <ul id="fixes-applied-items" class="space-y-1 text-sm text-slate-600 dark:text-slate-400"></ul>
+                    <ul id="fixes-applied-items" class="space-y-1 text-xs" style="color: var(--term-text-dim);"></ul>
                 </div>
             </div>
 
             <!-- Agent Reviews -->
             <div>
-                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
-                    </svg>
-                    Agent Reviews
+                <h2 class="text-sm font-semibold mb-4 flex items-center pb-3 border-b" style="color: var(--term-purple); border-color: var(--term-border);">
+                    <span class="mr-2">&gt;</span>
+                    AGENT_REVIEWS
                 </h2>
                 <div id="reviews-container" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
             </div>
 
-            <!-- Responses (Full Mode) -->
+            <!-- Responses Section -->
             <div id="responses-section" class="hidden">
-                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                    </svg>
-                    Agent Discussions
+                <h2 class="text-sm font-semibold mb-4 flex items-center pb-3 border-b" style="color: var(--term-cyan); border-color: var(--term-border);">
+                    <span class="mr-2">&gt;</span>
+                    AGENT_DISCUSSION
                 </h2>
                 <div id="responses-container" class="space-y-3"></div>
             </div>
 
-            <!-- Votes -->
+            <!-- Votes Section -->
             <div id="votes-section" class="hidden">
-                <h2 class="text-lg font-semibold text-slate-900 dark:text-white mb-4 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
-                    </svg>
-                    Agent Votes
+                <h2 class="text-sm font-semibold mb-4 flex items-center pb-3 border-b" style="color: var(--term-amber); border-color: var(--term-border);">
+                    <span class="mr-2">&gt;</span>
+                    AGENT_VOTES
                 </h2>
-                <div id="votes-container" class="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4"></div>
+                <div id="votes-container" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></div>
             </div>
         </div>
     </main>
 
     <!-- History Modal -->
-    <div id="history-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-hidden fade-in">
-            <div class="p-4 sm:p-5 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-slate-900 dark:text-white flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    Review History
+    <div id="history-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4" style="background: rgba(0, 0, 0, 0.8);">
+        <div class="border max-w-2xl w-full max-h-[85vh] overflow-hidden fade-in" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+            <div class="p-4 border-b flex items-center justify-between" style="border-color: var(--term-border);">
+                <h2 class="text-sm font-semibold flex items-center" style="color: var(--term-cyan);">
+                    <span class="mr-2">&gt;</span>
+                    REVIEW_HISTORY
                 </h2>
-                <button id="close-history" class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-white rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button id="close-history" class="p-1 transition-colors" style="color: var(--term-text-dim);">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                     </svg>
                 </button>
             </div>
-            <div id="history-list" class="p-4 overflow-y-auto max-h-[calc(85vh-80px)] space-y-3">
-                <!-- History items loaded dynamically -->
-            </div>
+            <div id="history-list" class="p-4 overflow-y-auto max-h-[calc(85vh-60px)] space-y-2"></div>
         </div>
     </div>
 
     <!-- Footer -->
-    <footer class="mt-12 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
-        <p>Powered by Claude AI &bull; <a href="https://github.com" class="text-indigo-500 hover:text-indigo-600">View on GitHub</a></p>
+    <footer class="mt-12 py-6 text-center border-t" style="border-color: var(--term-border);">
+        <p class="text-xs" style="color: var(--term-text-muted);">
+            // powered by Claude AI |
+            <a href="https://github.com" class="hover:underline" style="color: var(--term-green);">github</a>
+        </p>
     </footer>
 
     <script>
@@ -897,16 +772,19 @@ def example_function():
         // State Management
         // ===================
         let ws = null;
-        let currentResultsData = null; // Store current results for export
-        let wsReviews = []; // Collect reviews during WebSocket streaming
-        let wsFixes = []; // Collect fixes during WebSocket streaming
-        let wsConsensus = null; // Store consensus during WebSocket streaming
-        let isDark = localStorage.getItem('theme') === 'dark' ||
-                     (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        let currentResultsData = null;
+        let wsReviews = [];
+        let wsFixes = [];
+        let wsConsensus = null;
+        // Dark mode is PRIMARY - check if user explicitly set light mode
+        let isDark = localStorage.getItem('theme') !== 'light';
 
-        // Initialize theme
-        if (isDark) {
-            document.documentElement.classList.add('dark');
+        // Initialize theme - dark is default
+        if (!isDark) {
+            document.documentElement.classList.remove('dark');
+            document.documentElement.classList.add('light');
+            document.querySelector('.sun-icon').classList.add('hidden');
+            document.querySelector('.moon-icon').classList.remove('hidden');
         }
 
         // ===================
@@ -934,81 +812,80 @@ def example_function():
         const agentStatusGrid = document.getElementById('agent-status-grid');
 
         // ===================
-        // Agent Configuration
+        // Agent Configuration - Terminal Colors
         // ===================
         const agentConfig = {
             'SecurityExpert': {
-                gradient: 'from-red-500 to-rose-600',
-                bg: 'bg-red-50 dark:bg-red-900/20',
-                border: 'border-red-200 dark:border-red-800',
-                text: 'text-red-700 dark:text-red-300',
-                icon: 'M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z'
+                color: 'var(--term-red)',
+                bgColor: 'rgba(255, 68, 68, 0.1)',
+                borderColor: 'rgba(255, 68, 68, 0.3)',
+                prefix: '[SEC]'
             },
             'PerformanceEngineer': {
-                gradient: 'from-blue-500 to-cyan-600',
-                bg: 'bg-blue-50 dark:bg-blue-900/20',
-                border: 'border-blue-200 dark:border-blue-800',
-                text: 'text-blue-700 dark:text-blue-300',
-                icon: 'M13 10V3L4 14h7v7l9-11h-7z'
+                color: 'var(--term-cyan)',
+                bgColor: 'rgba(0, 212, 255, 0.1)',
+                borderColor: 'rgba(0, 212, 255, 0.3)',
+                prefix: '[PERF]'
             },
             'ArchitectureCritic': {
-                gradient: 'from-purple-500 to-violet-600',
-                bg: 'bg-purple-50 dark:bg-purple-900/20',
-                border: 'border-purple-200 dark:border-purple-800',
-                text: 'text-purple-700 dark:text-purple-300',
-                icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
+                color: 'var(--term-purple)',
+                bgColor: 'rgba(170, 136, 255, 0.1)',
+                borderColor: 'rgba(170, 136, 255, 0.3)',
+                prefix: '[ARCH]'
             },
             'PragmaticDev': {
-                gradient: 'from-green-500 to-emerald-600',
-                bg: 'bg-green-50 dark:bg-green-900/20',
-                border: 'border-green-200 dark:border-green-800',
-                text: 'text-green-700 dark:text-green-300',
-                icon: 'M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4'
+                color: 'var(--term-green)',
+                bgColor: 'rgba(0, 255, 136, 0.1)',
+                borderColor: 'rgba(0, 255, 136, 0.3)',
+                prefix: '[DEV]'
             },
         };
 
         // ===================
         // Event Listeners
         // ===================
-
-        // Character count
         codeInput.addEventListener('input', () => {
-            charCount.textContent = `${codeInput.value.length} characters`;
+            charCount.textContent = `${codeInput.value.length} chars`;
         });
 
-        // Theme toggle
         document.getElementById('theme-toggle').addEventListener('click', () => {
             isDark = !isDark;
-            document.documentElement.classList.toggle('dark', isDark);
-            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            if (isDark) {
+                document.documentElement.classList.add('dark');
+                document.documentElement.classList.remove('light');
+                document.querySelector('.sun-icon').classList.remove('hidden');
+                document.querySelector('.moon-icon').classList.add('hidden');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+                document.documentElement.classList.add('light');
+                document.querySelector('.sun-icon').classList.add('hidden');
+                document.querySelector('.moon-icon').classList.remove('hidden');
+                localStorage.setItem('theme', 'light');
+            }
         });
 
-        // History button
         document.getElementById('history-btn').addEventListener('click', async () => {
             historyModal.classList.remove('hidden');
             await loadHistory();
         });
 
-        // Close history modal
         document.getElementById('close-history').addEventListener('click', () => {
             historyModal.classList.add('hidden');
         });
 
-        // Close modal on backdrop click
         historyModal.addEventListener('click', (e) => {
             if (e.target === historyModal) {
                 historyModal.classList.add('hidden');
             }
         });
 
-        // Submit review
         submitBtn.addEventListener('click', () => {
             const code = codeInput.value.trim();
             if (!code) {
-                showToast('Please enter some code to review', 'error');
+                showToast('ERROR: no code provided', 'error');
                 return;
             }
-
             if (streamingMode.checked) {
                 submitWithWebSocket(code);
             } else {
@@ -1016,7 +893,6 @@ def example_function():
             }
         });
 
-        // Keyboard shortcut: Ctrl+Enter to submit
         codeInput.addEventListener('keydown', (e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
                 submitBtn.click();
@@ -1027,39 +903,37 @@ def example_function():
         // History Functions
         // ===================
         async function loadHistory() {
-            historyList.innerHTML = '<div class="text-center py-8"><div class="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto"></div><p class="text-slate-500 mt-2">Loading history...</p></div>';
+            historyList.innerHTML = '<div class="text-center py-8"><div class="w-6 h-6 border-2 animate-spin mx-auto" style="border-color: var(--term-green); border-top-color: transparent;"></div><p class="text-xs mt-2" style="color: var(--term-text-dim);">loading...</p></div>';
 
             try {
                 const res = await fetch('/api/sessions?limit=20');
                 const sessions = await res.json();
 
                 if (sessions.length === 0) {
-                    historyList.innerHTML = '<p class="text-center py-8 text-slate-500">No review history yet</p>';
+                    historyList.innerHTML = '<p class="text-center py-8 text-xs" style="color: var(--term-text-dim);">no history found</p>';
                     return;
                 }
 
                 historyList.innerHTML = sessions.map(s => `
-                    <div class="p-4 bg-slate-50 dark:bg-slate-900 rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors border border-slate-200 dark:border-slate-700" onclick="loadSession('${s.session_id}')">
+                    <div class="p-3 border cursor-pointer transition-colors hover:border-opacity-100" style="background: var(--term-bg); border-color: var(--term-border);" onclick="loadSession('${s.session_id}')">
                         <div class="flex items-center justify-between mb-2">
-                            <span class="text-sm font-mono text-slate-500 dark:text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded">${s.session_id.slice(0, 8)}</span>
-                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${getDecisionClasses(s.final_decision)}">${s.final_decision || 'Pending'}</span>
+                            <span class="text-xs font-mono" style="color: var(--term-text-muted);">${s.session_id.slice(0, 8)}</span>
+                            <span class="px-2 py-0.5 text-xs font-bold ${getDecisionClasses(s.final_decision)}">${s.final_decision || 'PENDING'}</span>
                         </div>
-                        <code class="block text-xs text-slate-600 dark:text-slate-300 truncate font-mono">${escapeHtml(s.code_preview)}</code>
-                        <p class="text-xs text-slate-400 dark:text-slate-500 mt-2">${formatDate(s.created_at)}</p>
+                        <code class="block text-xs truncate font-mono" style="color: var(--term-text-dim);">${escapeHtml(s.code_preview)}</code>
+                        <p class="text-xs mt-2" style="color: var(--term-text-muted);">${formatDate(s.created_at)}</p>
                     </div>
                 `).join('');
             } catch (err) {
-                historyList.innerHTML = '<p class="text-center py-8 text-red-500">Failed to load history</p>';
+                historyList.innerHTML = '<p class="text-center py-8 text-xs" style="color: var(--term-red);">ERROR: failed to load history</p>';
             }
         }
 
         async function loadSession(sessionId) {
             historyModal.classList.add('hidden');
-
-            // Show loading state
             statusSection.classList.remove('hidden');
-            statusText.textContent = 'Loading session';
-            statusDetail.textContent = 'Fetching past review data...';
+            statusText.textContent = 'LOADING';
+            statusDetail.textContent = 'fetching session data...';
             resultsSection.classList.add('hidden');
 
             try {
@@ -1068,7 +942,7 @@ def example_function():
                 displayResults(session);
                 statusSection.classList.add('hidden');
             } catch (err) {
-                showToast('Failed to load session: ' + err.message, 'error');
+                showToast('ERROR: ' + err.message, 'error');
                 statusSection.classList.add('hidden');
             }
         }
@@ -1100,9 +974,9 @@ def example_function():
                 handleWebSocketMessage(msg);
             };
 
-            ws.onerror = (err) => {
-                statusText.textContent = 'Connection error';
-                statusDetail.textContent = 'Please try again';
+            ws.onerror = () => {
+                statusText.textContent = 'CONNECTION_ERROR';
+                statusDetail.textContent = 'retry...';
                 hideSpinner();
                 submitBtn.disabled = false;
             };
@@ -1115,16 +989,14 @@ def example_function():
         function handleWebSocketMessage(msg) {
             switch (msg.type) {
                 case 'status':
-                    statusText.textContent = msg.data.message;
+                    statusText.textContent = msg.data.message.toUpperCase().replace(/ /g, '_');
                     break;
                 case 'review':
                     updateAgentStatus(msg.data.agent_name, 'complete');
                     addReviewPanel(msg.data);
-                    // Collect review for later use
                     wsReviews.push(msg.data);
                     break;
                 case 'fix':
-                    // Collect fix as it arrives
                     wsFixes.push(msg.data);
                     break;
                 case 'response':
@@ -1143,7 +1015,6 @@ def example_function():
                     statusSection.classList.add('hidden');
                     submitBtn.disabled = false;
 
-                    // Build currentResultsData for export functions
                     const language = languageSelect.value;
                     currentResultsData = {
                         session_id: msg.data.session_id,
@@ -1155,22 +1026,14 @@ def example_function():
                         exportedAt: new Date().toISOString()
                     };
 
-                    // Show export panel (BUG-003 fix)
                     document.getElementById('export-panel').classList.remove('hidden');
-
-                    // Display suggested fixes panel (BUG-004 fix)
                     displaySuggestedFixes(wsReviews, language);
-
-                    // Display quick actions panel
                     displayQuickActions(wsReviews);
-
-                    // Display apply all fixes panel
                     displayApplyAllFixes(codeInput.value, wsReviews, language);
-
-                    showToast('Review complete!', 'success');
+                    showToast('[OK] review complete', 'success');
                     break;
                 case 'error':
-                    statusText.textContent = 'Error';
+                    statusText.textContent = 'ERROR';
                     statusDetail.textContent = msg.data.message;
                     hideSpinner();
                     submitBtn.disabled = false;
@@ -1187,8 +1050,8 @@ def example_function():
             submitBtn.disabled = true;
 
             try {
-                statusText.textContent = 'Submitting review';
-                statusDetail.textContent = 'This may take a moment...';
+                statusText.textContent = 'SUBMITTING';
+                statusDetail.textContent = 'processing...';
 
                 const res = await fetch('/api/review', {
                     method: 'POST',
@@ -1200,15 +1063,13 @@ def example_function():
                     }),
                 });
 
-                if (!res.ok) {
-                    throw new Error('Review failed: ' + res.statusText);
-                }
+                if (!res.ok) throw new Error('review failed: ' + res.statusText);
 
                 const data = await res.json();
                 displayResults(data);
-                showToast('Review complete!', 'success');
+                showToast('[OK] review complete', 'success');
             } catch (err) {
-                statusText.textContent = 'Error';
+                statusText.textContent = 'ERROR';
                 statusDetail.textContent = err.message;
                 hideSpinner();
             } finally {
@@ -1224,29 +1085,23 @@ def example_function():
             responsesContainer.innerHTML = '';
             votesContainer.innerHTML = '';
             consensusPanel.classList.add('hidden');
-            consensusPanel.className = consensusPanel.className.replace(/border-(green|red|yellow|amber)-\d+/g, '');
             responsesSection.classList.add('hidden');
             votesSection.classList.add('hidden');
             agentStatusGrid.innerHTML = '';
-            // Reset export panel and data
             document.getElementById('export-panel').classList.add('hidden');
             currentResultsData = null;
-            // Reset WebSocket state
             wsReviews = [];
             wsFixes = [];
             wsConsensus = null;
-            // Reset fixes panel
             document.getElementById('fixes-panel').classList.add('hidden');
             document.getElementById('no-fixes-msg').classList.add('hidden');
             ['critical', 'high', 'medium', 'low'].forEach(severity => {
                 document.getElementById(`fixes-${severity}`).classList.add('hidden');
                 document.getElementById(`fixes-${severity}-content`).innerHTML = '';
             });
-            // Reset apply all fixes panel
             document.getElementById('apply-fixes-panel').classList.add('hidden');
             document.getElementById('all-fixed-code').textContent = '';
             document.getElementById('fixes-applied-items').innerHTML = '';
-            // Reset quick actions panel
             document.getElementById('quick-actions-panel').classList.add('hidden');
         }
 
@@ -1255,9 +1110,9 @@ def example_function():
             agentStatusGrid.innerHTML = agents.map(name => {
                 const config = agentConfig[name];
                 return `
-                    <div id="status-${name}" class="flex items-center space-x-2 p-2 rounded-lg bg-slate-100 dark:bg-slate-700">
-                        <div class="w-3 h-3 rounded-full bg-slate-400 animate-pulse" data-status="pending"></div>
-                        <span class="text-xs font-medium text-slate-600 dark:text-slate-300 truncate">${name.replace(/([A-Z])/g, ' $1').trim()}</span>
+                    <div id="status-${name}" class="flex items-center gap-2 p-2 border" style="background: var(--term-bg); border-color: var(--term-border);">
+                        <div class="status-dot pending" data-status="pending"></div>
+                        <span class="text-xs font-medium truncate" style="color: ${config.color};">${config.prefix}</span>
                     </div>
                 `;
             }).join('');
@@ -1268,7 +1123,7 @@ def example_function():
             if (el) {
                 const dot = el.querySelector('[data-status]');
                 if (status === 'complete') {
-                    dot.className = 'w-3 h-3 rounded-full bg-green-500';
+                    dot.className = 'status-dot complete';
                     dot.dataset.status = 'complete';
                 }
             }
@@ -1283,7 +1138,6 @@ def example_function():
             statusSection.classList.add('hidden');
             resultsSection.classList.remove('hidden');
 
-            // Store data for export functions
             currentResultsData = {
                 ...data,
                 code: data.code || codeInput.value,
@@ -1291,35 +1145,24 @@ def example_function():
                 exportedAt: new Date().toISOString()
             };
 
-            // Show export panel
             document.getElementById('export-panel').classList.remove('hidden');
-
-            // Reviews
             (data.reviews || []).forEach(r => addReviewPanel(r));
-
-            // Extract and display fixes from reviews
             displaySuggestedFixes(data.reviews || [], languageSelect.value);
-
-            // Display Quick Actions panel for common patterns
             displayQuickActions(data.reviews || []);
 
-            // Apply all fixes section - use the original code from data or from the input
             const originalCode = data.code || codeInput.value;
             displayApplyAllFixes(originalCode, data.reviews || [], languageSelect.value);
 
-            // Responses
             if (data.responses?.length) {
                 responsesSection.classList.remove('hidden');
                 data.responses.forEach(r => addResponsePanel(r));
             }
 
-            // Votes
             if (data.votes?.length) {
                 votesSection.classList.remove('hidden');
                 data.votes.forEach(v => addVotePanel(v));
             }
 
-            // Consensys
             if (data.consensus) {
                 displayConsensys(data.consensus);
             }
@@ -1330,73 +1173,58 @@ def example_function():
         // ===================
         function addReviewPanel(review) {
             const config = agentConfig[review.agent_name] || {
-                gradient: 'from-slate-500 to-slate-600',
-                bg: 'bg-slate-50 dark:bg-slate-900/50',
-                border: 'border-slate-200 dark:border-slate-700',
-                text: 'text-slate-700 dark:text-slate-300',
-                icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
+                color: 'var(--term-text)',
+                bgColor: 'var(--term-bg)',
+                borderColor: 'var(--term-border)',
+                prefix: '[AGT]'
             };
             const severityClass = `severity-${(review.severity || 'low').toLowerCase()}`;
 
             const html = `
-                <div class="agent-panel ${config.bg} ${config.border} border-2 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow fade-in">
-                    <div class="p-4 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
+                <div class="agent-panel border overflow-hidden fade-in" style="background: ${config.bgColor}; border-color: ${config.borderColor};">
+                    <div class="p-3 cursor-pointer select-none" onclick="this.parentElement.classList.toggle('collapsed')">
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center space-x-3">
-                                <div class="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br ${config.gradient} rounded-xl flex items-center justify-center shadow-lg">
-                                    <svg class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${config.icon}"></path>
-                                    </svg>
-                                </div>
+                            <div class="flex items-center gap-3">
+                                <span class="text-xs font-bold" style="color: ${config.color};">${config.prefix}</span>
                                 <div>
-                                    <h3 class="font-semibold text-slate-900 dark:text-white text-sm sm:text-base">${formatAgentName(review.agent_name)}</h3>
-                                    <p class="text-xs sm:text-sm">
+                                    <h3 class="text-sm font-semibold" style="color: var(--term-text);">${formatAgentName(review.agent_name)}</h3>
+                                    <p class="text-xs">
                                         <span class="${severityClass}">${review.severity || 'LOW'}</span>
-                                        <span class="text-slate-400 mx-1">&bull;</span>
-                                        <span class="text-slate-500 dark:text-slate-400">${Math.round((review.confidence || 0) * 100)}% confidence</span>
+                                        <span class="mx-1" style="color: var(--term-text-muted);">|</span>
+                                        <span style="color: var(--term-text-dim);">${Math.round((review.confidence || 0) * 100)}% conf</span>
                                     </p>
                                 </div>
                             </div>
-                            <svg class="chevron w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg class="chevron w-4 h-4" style="color: var(--term-text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </div>
                     </div>
-                    <div class="panel-content px-4 pb-4 space-y-3">
+                    <div class="panel-content px-3 pb-3 space-y-3">
                         ${review.issues?.length ? `
                             <div>
-                                <h4 class="font-medium text-slate-700 dark:text-slate-300 mb-2 text-sm flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    Issues (${review.issues.length})
-                                </h4>
-                                <ul class="space-y-1.5 text-sm text-slate-600 dark:text-slate-400">
+                                <h4 class="text-xs font-semibold mb-2" style="color: var(--term-red);">[!] ISSUES (${review.issues.length})</h4>
+                                <ul class="space-y-1 text-xs" style="color: var(--term-text-dim);">
                                     ${review.issues.map(i => `
-                                        <li class="flex items-start pl-2 border-l-2 ${getBorderColorForSeverity(i.severity || 'low')}">
+                                        <li class="flex items-start pl-2 border-l" style="border-color: ${getBorderColorForSeverity(i.severity || 'low')};">
                                             <span>${escapeHtml(i.description || i)}</span>
-                                            ${i.line ? `<span class="ml-1 text-xs text-slate-400">(L${i.line})</span>` : ''}
+                                            ${i.line ? `<span class="ml-1" style="color: var(--term-text-muted);">:${i.line}</span>` : ''}
                                         </li>
                                     `).join('')}
                                 </ul>
                             </div>
-                        ` : '<p class="text-green-600 dark:text-green-400 text-sm flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>No issues found</p>'}
+                        ` : '<p class="text-xs" style="color: var(--term-green);">[OK] no issues</p>'}
                         ${review.suggestions?.length ? `
                             <div>
-                                <h4 class="font-medium text-slate-700 dark:text-slate-300 mb-2 text-sm flex items-center">
-                                    <svg class="w-4 h-4 mr-1 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
-                                    </svg>
-                                    Suggestions
-                                </h4>
-                                <ul class="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                                    ${review.suggestions.map(s => `<li class="flex items-start"><span class="text-amber-500 mr-2">*</span>${escapeHtml(s)}</li>`).join('')}
+                                <h4 class="text-xs font-semibold mb-2" style="color: var(--term-amber);">[*] SUGGESTIONS</h4>
+                                <ul class="space-y-1 text-xs" style="color: var(--term-text-dim);">
+                                    ${review.suggestions.map(s => `<li class="flex items-start">- ${escapeHtml(s)}</li>`).join('')}
                                 </ul>
                             </div>
                         ` : ''}
                         ${review.summary ? `
-                            <div class="pt-2 border-t border-slate-200 dark:border-slate-700">
-                                <p class="text-sm text-slate-600 dark:text-slate-400 italic">${escapeHtml(review.summary)}</p>
+                            <div class="pt-2 border-t" style="border-color: var(--term-border);">
+                                <p class="text-xs" style="color: var(--term-text-dim);">// ${escapeHtml(review.summary)}</p>
                             </div>
                         ` : ''}
                     </div>
@@ -1406,32 +1234,27 @@ def example_function():
         }
 
         function addResponsePanel(response) {
-            const config = agentConfig[response.agent_name] || { bg: 'bg-slate-50', border: 'border-slate-200', text: 'text-slate-700' };
-            const agreementConfig = {
-                'AGREE': { bg: 'bg-green-100 dark:bg-green-900/30', text: 'text-green-700 dark:text-green-300', icon: 'M5 13l4 4L19 7' },
-                'DISAGREE': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', icon: 'M6 18L18 6M6 6l12 12' },
-                'PARTIAL': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', icon: 'M12 8v4m0 4h.01' }
+            const config = agentConfig[response.agent_name] || { color: 'var(--term-text)', prefix: '[AGT]' };
+            const agreementColors = {
+                'AGREE': 'var(--term-green)',
+                'DISAGREE': 'var(--term-red)',
+                'PARTIAL': 'var(--term-amber)'
             };
-            const agreement = agreementConfig[response.agreement_level] || agreementConfig['PARTIAL'];
+            const agreeColor = agreementColors[response.agreement_level] || agreementColors['PARTIAL'];
 
             const html = `
-                <div class="${config.bg} ${config.border} border rounded-xl p-4 fade-in">
+                <div class="border p-3 fade-in" style="background: var(--term-bg); border-color: var(--term-border);">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                        <span class="font-semibold ${config.text} text-sm">${formatAgentName(response.agent_name)}</span>
-                        <div class="flex items-center space-x-2 text-sm">
-                            <span class="text-slate-400">responds to</span>
-                            <span class="font-medium text-slate-700 dark:text-slate-300">${formatAgentName(response.responding_to)}</span>
-                            <span class="${agreement.bg} ${agreement.text} px-2 py-0.5 rounded-full text-xs font-bold flex items-center">
-                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${agreement.icon}"></path>
-                                </svg>
-                                ${response.agreement_level}
-                            </span>
+                        <span class="text-xs font-semibold" style="color: ${config.color};">${config.prefix} ${formatAgentName(response.agent_name)}</span>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span style="color: var(--term-text-muted);">-></span>
+                            <span style="color: var(--term-text-dim);">${formatAgentName(response.responding_to)}</span>
+                            <span class="px-2 py-0.5 font-bold" style="color: ${agreeColor}; background: ${agreeColor}1a;">${response.agreement_level}</span>
                         </div>
                     </div>
                     ${response.points?.length ? `
-                        <ul class="space-y-1 text-sm text-slate-600 dark:text-slate-400">
-                            ${response.points.map(p => `<li class="flex items-start"><span class="text-indigo-500 mr-2">*</span>${escapeHtml(p)}</li>`).join('')}
+                        <ul class="space-y-1 text-xs" style="color: var(--term-text-dim);">
+                            ${response.points.map(p => `<li class="flex items-start">- ${escapeHtml(p)}</li>`).join('')}
                         </ul>
                     ` : ''}
                 </div>
@@ -1440,23 +1263,21 @@ def example_function():
         }
 
         function addVotePanel(vote) {
-            const config = agentConfig[vote.agent_name] || { gradient: 'from-slate-500 to-slate-600', text: 'text-slate-700' };
-            const voteConfig = {
-                'APPROVE': { bg: 'bg-green-500', shadow: 'shadow-green-500/25' },
-                'REJECT': { bg: 'bg-red-500', shadow: 'shadow-red-500/25' },
-                'ABSTAIN': { bg: 'bg-amber-500', shadow: 'shadow-amber-500/25' }
+            const config = agentConfig[vote.agent_name] || { color: 'var(--term-text)', prefix: '[AGT]' };
+            const voteColors = {
+                'APPROVE': 'var(--term-green)',
+                'REJECT': 'var(--term-red)',
+                'ABSTAIN': 'var(--term-amber)'
             };
-            const voteStyle = voteConfig[vote.decision] || voteConfig['ABSTAIN'];
+            const voteColor = voteColors[vote.decision] || voteColors['ABSTAIN'];
 
             const html = `
-                <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-center shadow-sm hover:shadow-md transition-shadow fade-in">
-                    <div class="w-12 h-12 sm:w-14 sm:h-14 mx-auto mb-3 bg-gradient-to-br ${config.gradient} rounded-xl flex items-center justify-center shadow-lg">
-                        <span class="text-white font-bold text-lg">${vote.agent_name.slice(0, 2).toUpperCase()}</span>
-                    </div>
-                    <h4 class="font-semibold text-slate-900 dark:text-white text-sm mb-2">${formatAgentName(vote.agent_name)}</h4>
-                    <span class="${voteStyle.bg} ${voteStyle.shadow} text-white px-4 py-1.5 rounded-full text-sm font-bold shadow-lg inline-block">${vote.decision}</span>
+                <div class="border p-3 text-center fade-in" style="background: var(--term-bg); border-color: var(--term-border);">
+                    <div class="text-xs font-bold mb-2" style="color: ${config.color};">${config.prefix}</div>
+                    <h4 class="text-xs font-semibold mb-2" style="color: var(--term-text);">${formatAgentName(vote.agent_name)}</h4>
+                    <span class="px-3 py-1 text-xs font-bold inline-block" style="color: var(--term-bg); background: ${voteColor};">${vote.decision}</span>
                     ${vote.reasoning ? `
-                        <p class="mt-3 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">${escapeHtml(vote.reasoning.slice(0, 100))}${vote.reasoning.length > 100 ? '...' : ''}</p>
+                        <p class="mt-2 text-xs" style="color: var(--term-text-muted);">${escapeHtml(vote.reasoning.slice(0, 80))}${vote.reasoning.length > 80 ? '...' : ''}</p>
                     ` : ''}
                 </div>
             `;
@@ -1465,25 +1286,24 @@ def example_function():
 
         function displayConsensys(consensus) {
             consensusPanel.classList.remove('hidden');
-
             const decision = consensus.decision;
             const badge = document.getElementById('decision-badge');
 
-            // Reset border classes
-            consensusPanel.className = consensusPanel.className.replace(/border-(green|red|amber)-\d+/g, '');
-
             if (decision === 'APPROVE') {
                 badge.textContent = 'APPROVED';
-                badge.className = 'px-5 py-2 rounded-full font-bold text-lg bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg shadow-green-500/25';
-                consensusPanel.classList.add('border-green-400');
+                badge.style.background = 'var(--term-green)';
+                badge.style.color = 'var(--term-bg)';
+                consensusPanel.style.borderColor = 'rgba(0, 255, 136, 0.5)';
             } else if (decision === 'REJECT') {
                 badge.textContent = 'REJECTED';
-                badge.className = 'px-5 py-2 rounded-full font-bold text-lg bg-gradient-to-r from-red-500 to-rose-600 text-white shadow-lg shadow-red-500/25';
-                consensusPanel.classList.add('border-red-400');
+                badge.style.background = 'var(--term-red)';
+                badge.style.color = 'var(--term-bg)';
+                consensusPanel.style.borderColor = 'rgba(255, 68, 68, 0.5)';
             } else {
-                badge.textContent = 'NEEDS REVIEW';
-                badge.className = 'px-5 py-2 rounded-full font-bold text-lg bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/25';
-                consensusPanel.classList.add('border-amber-400');
+                badge.textContent = 'REVIEW_NEEDED';
+                badge.style.background = 'var(--term-amber)';
+                badge.style.color = 'var(--term-bg)';
+                consensusPanel.style.borderColor = 'rgba(255, 170, 0, 0.5)';
             }
 
             document.getElementById('approve-count').textContent = consensus.vote_counts?.APPROVE || 0;
@@ -1494,10 +1314,9 @@ def example_function():
             const keyIssuesList = document.getElementById('key-issues-list');
             if (consensus.key_issues?.length) {
                 keyIssues.classList.remove('hidden');
-                // Handle both string and object key_issues
                 keyIssuesList.innerHTML = consensus.key_issues.map(i => {
                     const issueText = typeof i === 'string' ? i : (i.description || JSON.stringify(i));
-                    return `<li class="flex items-start text-sm"><span class="text-red-500 mr-2">*</span>${escapeHtml(issueText)}</li>`;
+                    return `<li class="flex items-start">- ${escapeHtml(issueText)}</li>`;
                 }).join('');
             } else {
                 keyIssues.classList.add('hidden');
@@ -1508,7 +1327,7 @@ def example_function():
             if (consensus.accepted_suggestions?.length) {
                 suggestions.classList.remove('hidden');
                 suggestionsList.innerHTML = consensus.accepted_suggestions.map(s =>
-                    `<li class="flex items-start text-sm"><span class="text-green-500 mr-2">*</span>${escapeHtml(s)}</li>`
+                    `<li class="flex items-start">+ ${escapeHtml(s)}</li>`
                 ).join('');
             } else {
                 suggestions.classList.add('hidden');
@@ -1522,20 +1341,17 @@ def example_function():
             const fixesPanel = document.getElementById('fixes-panel');
             const noFixesMsg = document.getElementById('no-fixes-msg');
 
-            // Clear previous fixes
             ['critical', 'high', 'medium', 'low'].forEach(severity => {
                 document.getElementById(`fixes-${severity}`).classList.add('hidden');
                 document.getElementById(`fixes-${severity}-content`).innerHTML = '';
             });
 
-            // Collect all issues with fixes from all reviews
             const fixesBySeverity = { critical: [], high: [], medium: [], low: [] };
             let totalFixes = 0;
 
             reviews.forEach(review => {
                 if (!review.issues) return;
                 review.issues.forEach(issue => {
-                    // Handle both object and string issues
                     const issueObj = typeof issue === 'string' ? { description: issue, severity: 'LOW' } : issue;
                     if (issueObj.fix) {
                         const severity = (issueObj.severity || 'LOW').toLowerCase();
@@ -1550,7 +1366,6 @@ def example_function():
                 });
             });
 
-            // Show panel if there are any fixes
             if (totalFixes === 0) {
                 fixesPanel.classList.remove('hidden');
                 noFixesMsg.classList.remove('hidden');
@@ -1562,7 +1377,6 @@ def example_function():
             noFixesMsg.classList.add('hidden');
             document.getElementById('fixes-count').textContent = `${totalFixes} fix${totalFixes !== 1 ? 'es' : ''}`;
 
-            // Populate each severity section
             Object.entries(fixesBySeverity).forEach(([severity, fixes]) => {
                 if (fixes.length === 0) return;
 
@@ -1572,76 +1386,56 @@ def example_function():
 
                 section.classList.remove('hidden');
                 countBadge.textContent = fixes.length;
-
                 content.innerHTML = fixes.map((fix, idx) => createFixCard(fix, language, `${severity}-${idx}`)).join('');
             });
 
-            // Apply Prism syntax highlighting
             Prism.highlightAll();
         }
 
         function createFixCard(issue, language, id) {
             const prismLang = getPrismLanguage(language);
-            const lineInfo = issue.line ? `<span class="text-xs text-slate-400 ml-2">Line ${issue.line}</span>` : '';
-            const agentBadge = issue.agent_name ? `<span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 ml-2">${formatAgentName(issue.agent_name)}</span>` : '';
+            const lineInfo = issue.line ? `<span class="text-xs" style="color: var(--term-text-muted);">:${issue.line}</span>` : '';
+            const agentBadge = issue.agent_name ? `<span class="text-xs px-1" style="color: var(--term-text-muted);">[${agentConfig[issue.agent_name]?.prefix || 'AGT'}]</span>` : '';
             const hasBothCodes = issue.original_code && issue.fix;
 
             return `
-                <div class="fix-card bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
-                    <div class="p-4 border-b border-slate-200 dark:border-slate-700">
+                <div class="border" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+                    <div class="p-3 border-b" style="border-color: var(--term-border);">
                         <div class="flex items-start justify-between gap-2">
                             <div class="flex-1">
-                                <p class="text-sm font-medium text-slate-800 dark:text-slate-200">${escapeHtml(issue.description)}</p>
-                                <div class="flex items-center mt-1">${lineInfo}${agentBadge}</div>
+                                <p class="text-xs" style="color: var(--term-text);">${escapeHtml(issue.description)}</p>
+                                <div class="flex items-center mt-1 gap-2">${lineInfo}${agentBadge}</div>
                             </div>
                             ${hasBothCodes ? `
-                                <button onclick="toggleDiffView('${id}')" id="diff-toggle-${id}" class="diff-toggle-btn flex items-center px-3 py-1.5 text-xs font-medium rounded-lg border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700">
-                                    <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
-                                    </svg>
-                                    Diff View
+                                <button onclick="toggleDiffView('${id}')" id="diff-toggle-${id}" class="diff-toggle-btn flex items-center px-2 py-1 text-xs font-medium border transition-colors" style="border-color: var(--term-border); color: var(--term-text-dim);">
+                                    [DIFF]
                                 </button>
                             ` : ''}
                         </div>
                     </div>
 
-                    <!-- Standard Code View -->
                     <div id="code-view-${id}" class="code-view-wrapper">
                         ${issue.original_code ? `
-                            <div class="px-4 py-2 bg-red-50 dark:bg-red-900/20 border-b border-slate-200 dark:border-slate-700">
+                            <div class="px-3 py-2 border-b" style="background: rgba(255, 68, 68, 0.05); border-color: var(--term-border);">
                                 <div class="flex items-center justify-between mb-2">
-                                    <span class="text-xs font-medium text-red-600 dark:text-red-400 flex items-center">
-                                        <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                        </svg>
-                                        Original Code
-                                    </span>
+                                    <span class="text-xs font-medium" style="color: var(--term-red);">[--] ORIGINAL</span>
                                 </div>
                                 <pre class="!bg-transparent !p-0 !m-0"><code class="language-${prismLang} !bg-transparent">${escapeHtml(issue.original_code)}</code></pre>
                             </div>
                         ` : ''}
-                        <div class="px-4 py-2 bg-green-50 dark:bg-green-900/20">
+                        <div class="px-3 py-2" style="background: rgba(0, 255, 136, 0.05);">
                             <div class="flex items-center justify-between mb-2">
-                                <span class="text-xs font-medium text-green-600 dark:text-green-400 flex items-center">
-                                    <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                                    </svg>
-                                    Suggested Fix
-                                </span>
-                                <button onclick="copyFixToClipboard(this, '${id}')" class="copy-btn flex items-center text-xs text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200">
-                                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                    </svg>
-                                    Copy
+                                <span class="text-xs font-medium" style="color: var(--term-green);">[++] FIX</span>
+                                <button onclick="copyFixToClipboard(this, '${id}')" class="text-xs px-2 py-0.5 border transition-colors" style="border-color: var(--term-border); color: var(--term-text-dim);">
+                                    COPY
                                 </button>
                             </div>
                             <pre class="!bg-transparent !p-0 !m-0"><code id="fix-code-${id}" class="language-${prismLang} !bg-transparent">${escapeHtml(issue.fix)}</code></pre>
                         </div>
                     </div>
 
-                    <!-- Diff View (hidden by default) -->
                     ${hasBothCodes ? `
-                        <div id="diff-view-${id}" class="diff-view-wrapper border-t border-slate-200 dark:border-slate-700">
+                        <div id="diff-view-${id}" class="diff-view-wrapper border-t" style="border-color: var(--term-border);">
                             ${createDiffView(issue.original_code, issue.fix, id)}
                         </div>
                     ` : ''}
@@ -1678,65 +1472,29 @@ def example_function():
                 const origLine = originalLines[i];
                 const fixLine = fixedLines[i];
 
-                // Left side (original/removed)
                 if (origLine !== undefined) {
                     const lineClass = origLine !== fixLine ? 'diff-line-removed' : 'diff-line-unchanged';
-                    leftHtml += `
-                        <div class="diff-line ${lineClass}">
-                            <div class="diff-line-number">${lineNum}</div>
-                            <div class="diff-line-content">${escapeHtml(origLine) || ' '}</div>
-                        </div>
-                    `;
+                    leftHtml += `<div class="diff-line ${lineClass}"><div class="diff-line-number">${lineNum}</div><div class="diff-line-content">${escapeHtml(origLine) || ' '}</div></div>`;
                 } else {
-                    leftHtml += `
-                        <div class="diff-line diff-line-empty">
-                            <div class="diff-line-number"></div>
-                            <div class="diff-line-content"></div>
-                        </div>
-                    `;
+                    leftHtml += `<div class="diff-line diff-line-empty"><div class="diff-line-number"></div><div class="diff-line-content"></div></div>`;
                 }
 
-                // Right side (fixed/added)
                 if (fixLine !== undefined) {
                     const lineClass = fixLine !== origLine ? 'diff-line-added' : 'diff-line-unchanged';
-                    rightHtml += `
-                        <div class="diff-line ${lineClass}">
-                            <div class="diff-line-number">${lineNum}</div>
-                            <div class="diff-line-content">${escapeHtml(fixLine) || ' '}</div>
-                        </div>
-                    `;
+                    rightHtml += `<div class="diff-line ${lineClass}"><div class="diff-line-number">${lineNum}</div><div class="diff-line-content">${escapeHtml(fixLine) || ' '}</div></div>`;
                 } else {
-                    rightHtml += `
-                        <div class="diff-line diff-line-empty">
-                            <div class="diff-line-number"></div>
-                            <div class="diff-line-content"></div>
-                        </div>
-                    `;
+                    rightHtml += `<div class="diff-line diff-line-empty"><div class="diff-line-number"></div><div class="diff-line-content"></div></div>`;
                 }
             }
 
             return `
                 <div class="diff-container">
                     <div class="diff-side">
-                        <div class="diff-header diff-header-removed">
-                            <span class="flex items-center">
-                                <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"></path>
-                                </svg>
-                                Original
-                            </span>
-                        </div>
+                        <div class="diff-header diff-header-removed">[--] ORIGINAL</div>
                         <div class="diff-lines">${leftHtml}</div>
                     </div>
                     <div class="diff-side">
-                        <div class="diff-header diff-header-added">
-                            <span class="flex items-center">
-                                <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                </svg>
-                                Fixed
-                            </span>
-                        </div>
+                        <div class="diff-header diff-header-added">[++] FIXED</div>
                         <div class="diff-lines">${rightHtml}</div>
                     </div>
                 </div>
@@ -1753,20 +1511,15 @@ def example_function():
             const text = codeEl ? codeEl.textContent : '';
 
             navigator.clipboard.writeText(text).then(() => {
-                btn.classList.add('copied');
-                const originalHTML = btn.innerHTML;
-                btn.innerHTML = `
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    Copied!
-                `;
+                const originalText = btn.textContent;
+                btn.textContent = 'COPIED';
+                btn.style.color = 'var(--term-green)';
                 setTimeout(() => {
-                    btn.classList.remove('copied');
-                    btn.innerHTML = originalHTML;
+                    btn.textContent = originalText;
+                    btn.style.color = '';
                 }, 2000);
             }).catch(() => {
-                showToast('Failed to copy to clipboard', 'error');
+                showToast('ERROR: copy failed', 'error');
             });
         }
 
@@ -1785,8 +1538,6 @@ def example_function():
         // ===================
         // Apply All Fixes Functions
         // ===================
-
-        // Global state for the combined fixed code
         let allFixedCodeText = '';
 
         function displayApplyAllFixes(originalCode, reviews, language) {
@@ -1795,7 +1546,6 @@ def example_function():
             const countBadge = document.getElementById('applied-fixes-count');
             const fixesList = document.getElementById('fixes-applied-items');
 
-            // Collect all fixes with their original code
             const fixes = [];
             reviews.forEach(review => {
                 if (!review.issues) return;
@@ -1819,7 +1569,6 @@ def example_function():
                 return;
             }
 
-            // Apply all non-conflicting fixes to the original code
             const { fixedCode, appliedFixes } = applyAllFixes(originalCode, fixes);
 
             if (appliedFixes.length === 0) {
@@ -1827,57 +1576,39 @@ def example_function():
                 return;
             }
 
-            // Store for copy function
             allFixedCodeText = fixedCode;
-
-            // Show panel
             panel.classList.remove('hidden');
+            countBadge.textContent = `${appliedFixes.length} applied`;
 
-            // Update count badge
-            countBadge.textContent = `${appliedFixes.length} fix${appliedFixes.length !== 1 ? 'es' : ''} applied`;
-
-            // Update code display
             const prismLang = getPrismLanguage(language);
             codeEl.className = `language-${prismLang}`;
             codeEl.textContent = fixedCode;
             Prism.highlightElement(codeEl);
 
-            // Update fixes list
             fixesList.innerHTML = appliedFixes.map(fix => `
-                <li class="flex items-start pl-2 border-l-2 ${getBorderColorForSeverity(fix.severity)}">
-                    <span>${escapeHtml(fix.description)}</span>
-                    ${fix.line ? `<span class="ml-1 text-xs text-slate-400">(L${fix.line})</span>` : ''}
+                <li class="flex items-start pl-2 border-l" style="border-color: ${getBorderColorForSeverity(fix.severity)};">
+                    <span>+ ${escapeHtml(fix.description)}</span>
+                    ${fix.line ? `<span class="ml-1" style="color: var(--term-text-muted);">:${fix.line}</span>` : ''}
                 </li>
             `).join('');
         }
 
         function applyAllFixes(originalCode, fixes) {
-            // Sort fixes by line number (descending) to apply from bottom to top
-            // This prevents line number shifts from affecting subsequent fixes
-            const sortedFixes = [...fixes].sort((a, b) => {
-                const lineA = a.line || 0;
-                const lineB = b.line || 0;
-                return lineB - lineA;
-            });
+            const sortedFixes = [...fixes].sort((a, b) => (b.line || 0) - (a.line || 0));
 
             let currentCode = originalCode;
             const appliedFixes = [];
-            const appliedOriginals = new Set(); // Track already applied fixes to avoid conflicts
+            const appliedOriginals = new Set();
 
             for (const fix of sortedFixes) {
-                // Skip if we already applied a fix for this original code
                 const originalNormalized = fix.original.trim();
-                if (appliedOriginals.has(originalNormalized)) {
-                    continue;
-                }
+                if (appliedOriginals.has(originalNormalized)) continue;
 
-                // Try to find and replace the original code
                 if (currentCode.includes(fix.original)) {
                     currentCode = currentCode.replace(fix.original, fix.fixed);
                     appliedFixes.push(fix);
                     appliedOriginals.add(originalNormalized);
                 } else if (currentCode.includes(fix.original.trim())) {
-                    // Try with trimmed version
                     currentCode = currentCode.replace(fix.original.trim(), fix.fixed.trim());
                     appliedFixes.push(fix);
                     appliedOriginals.add(originalNormalized);
@@ -1892,137 +1623,118 @@ def example_function():
 
             navigator.clipboard.writeText(allFixedCodeText).then(() => {
                 const originalHTML = btn.innerHTML;
-                btn.innerHTML = `
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    Copied!
-                `;
-                btn.classList.add('from-green-600', 'to-emerald-700');
+                btn.innerHTML = `<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>COPIED`;
                 setTimeout(() => {
                     btn.innerHTML = originalHTML;
-                    btn.classList.remove('from-green-600', 'to-emerald-700');
                 }, 2000);
             }).catch(() => {
-                showToast('Failed to copy to clipboard', 'error');
+                showToast('ERROR: copy failed', 'error');
             });
         }
 
         // ===================
         // Quick Actions Functions
         // ===================
-
-        // Common security fix patterns with documentation
         const QUICK_ACTION_PATTERNS = {
             'input-validation': {
                 name: 'Input Validation',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-                color: 'blue',
+                color: 'var(--term-cyan)',
                 keywords: ['input', 'validation', 'validate', 'sanitize', 'sanitization', 'user input', 'untrusted'],
                 docs: [
                     { title: 'OWASP Input Validation', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html' },
-                    { title: 'CWE-20: Improper Input Validation', url: 'https://cwe.mitre.org/data/definitions/20.html' }
+                    { title: 'CWE-20', url: 'https://cwe.mitre.org/data/definitions/20.html' }
                 ],
-                description: 'Validate and sanitize all user inputs before processing'
+                description: 'validate/sanitize all user inputs'
             },
             'sql-injection': {
                 name: 'SQL Injection Prevention',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7c-2 0-3 1-3 3z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 11h6M9 15h6"></path></svg>`,
-                color: 'red',
+                color: 'var(--term-red)',
                 keywords: ['sql', 'injection', 'query', 'parameterized', 'prepared statement', 'database', 'execute', 'cursor'],
                 docs: [
-                    { title: 'OWASP SQL Injection Prevention', url: 'https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html' },
-                    { title: 'CWE-89: SQL Injection', url: 'https://cwe.mitre.org/data/definitions/89.html' }
+                    { title: 'OWASP SQL Prevention', url: 'https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html' },
+                    { title: 'CWE-89', url: 'https://cwe.mitre.org/data/definitions/89.html' }
                 ],
-                description: 'Use parameterized queries to prevent SQL injection attacks'
+                description: 'use parameterized queries'
             },
             'xss-prevention': {
                 name: 'XSS Prevention',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"></path></svg>`,
-                color: 'orange',
+                color: '#ff7744',
                 keywords: ['xss', 'cross-site', 'escape', 'html', 'script', 'output encoding', 'sanitize output'],
                 docs: [
                     { title: 'OWASP XSS Prevention', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html' },
-                    { title: 'CWE-79: XSS', url: 'https://cwe.mitre.org/data/definitions/79.html' }
+                    { title: 'CWE-79', url: 'https://cwe.mitre.org/data/definitions/79.html' }
                 ],
-                description: 'Escape output to prevent cross-site scripting attacks'
+                description: 'escape output to prevent XSS'
             },
             'authentication': {
                 name: 'Authentication',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>`,
-                color: 'purple',
+                color: 'var(--term-purple)',
                 keywords: ['auth', 'password', 'hash', 'bcrypt', 'session', 'token', 'credential', 'login'],
                 docs: [
-                    { title: 'OWASP Authentication', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html' },
-                    { title: 'OWASP Password Storage', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html' }
+                    { title: 'OWASP Auth', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html' },
+                    { title: 'Password Storage', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html' }
                 ],
-                description: 'Secure authentication and password handling'
+                description: 'secure auth and password handling'
             },
             'path-traversal': {
                 name: 'Path Traversal Prevention',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path></svg>`,
-                color: 'amber',
+                color: 'var(--term-amber)',
                 keywords: ['path', 'traversal', 'directory', 'file', '../', 'lfi', 'local file'],
                 docs: [
                     { title: 'OWASP Path Traversal', url: 'https://owasp.org/www-community/attacks/Path_Traversal' },
-                    { title: 'CWE-22: Path Traversal', url: 'https://cwe.mitre.org/data/definitions/22.html' }
+                    { title: 'CWE-22', url: 'https://cwe.mitre.org/data/definitions/22.html' }
                 ],
-                description: 'Validate and sanitize file paths to prevent directory traversal'
+                description: 'validate file paths'
             },
             'command-injection': {
                 name: 'Command Injection Prevention',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>`,
-                color: 'red',
+                color: 'var(--term-red)',
                 keywords: ['command', 'injection', 'shell', 'exec', 'system', 'subprocess', 'os.system', 'popen'],
                 docs: [
                     { title: 'OWASP Command Injection', url: 'https://owasp.org/www-community/attacks/Command_Injection' },
-                    { title: 'CWE-78: OS Command Injection', url: 'https://cwe.mitre.org/data/definitions/78.html' }
+                    { title: 'CWE-78', url: 'https://cwe.mitre.org/data/definitions/78.html' }
                 ],
-                description: 'Avoid shell commands with user input; use safe APIs'
+                description: 'avoid shell commands with user input'
             },
             'error-handling': {
                 name: 'Error Handling',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
-                color: 'yellow',
+                color: 'var(--term-amber)',
                 keywords: ['error', 'exception', 'try', 'catch', 'handling', 'logging', 'stack trace'],
                 docs: [
                     { title: 'OWASP Error Handling', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Error_Handling_Cheat_Sheet.html' },
-                    { title: 'CWE-209: Error Message Exposure', url: 'https://cwe.mitre.org/data/definitions/209.html' }
+                    { title: 'CWE-209', url: 'https://cwe.mitre.org/data/definitions/209.html' }
                 ],
-                description: 'Handle errors securely without exposing sensitive information'
+                description: 'secure error handling'
             },
             'cryptography': {
                 name: 'Cryptography',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>`,
-                color: 'indigo',
+                color: 'var(--term-purple)',
                 keywords: ['crypto', 'encrypt', 'decrypt', 'hash', 'md5', 'sha', 'aes', 'rsa', 'key', 'random'],
                 docs: [
-                    { title: 'OWASP Cryptographic Storage', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html' },
-                    { title: 'CWE-327: Broken Crypto', url: 'https://cwe.mitre.org/data/definitions/327.html' }
+                    { title: 'OWASP Crypto', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html' },
+                    { title: 'CWE-327', url: 'https://cwe.mitre.org/data/definitions/327.html' }
                 ],
-                description: 'Use strong, modern cryptographic algorithms'
+                description: 'use strong modern algorithms'
             },
             'secrets-management': {
                 name: 'Secrets Management',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>`,
-                color: 'rose',
+                color: 'var(--term-red)',
                 keywords: ['secret', 'api key', 'password', 'credential', 'hardcoded', 'environment', 'config'],
                 docs: [
-                    { title: 'OWASP Secrets Management', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html' },
-                    { title: 'CWE-798: Hardcoded Credentials', url: 'https://cwe.mitre.org/data/definitions/798.html' }
+                    { title: 'OWASP Secrets', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html' },
+                    { title: 'CWE-798', url: 'https://cwe.mitre.org/data/definitions/798.html' }
                 ],
-                description: 'Store secrets securely, never hardcode credentials'
+                description: 'never hardcode credentials'
             },
             'access-control': {
                 name: 'Access Control',
-                icon: `<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>`,
-                color: 'teal',
+                color: 'var(--term-green)',
                 keywords: ['access', 'authorization', 'permission', 'role', 'privilege', 'admin', 'idor'],
                 docs: [
                     { title: 'OWASP Access Control', url: 'https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html' },
-                    { title: 'CWE-284: Improper Access Control', url: 'https://cwe.mitre.org/data/definitions/284.html' }
+                    { title: 'CWE-284', url: 'https://cwe.mitre.org/data/definitions/284.html' }
                 ],
-                description: 'Implement proper access control checks'
+                description: 'proper access control checks'
             }
         };
 
@@ -2031,16 +1743,12 @@ def example_function():
             const container = document.getElementById('quick-actions-container');
             const countBadge = document.getElementById('quick-actions-count');
 
-            // Collect all issues and their fixes
             const allIssues = [];
             reviews.forEach(review => {
                 if (!review.issues) return;
                 review.issues.forEach(issue => {
                     const issueObj = typeof issue === 'string' ? { description: issue } : issue;
-                    allIssues.push({
-                        ...issueObj,
-                        agent_name: review.agent_name
-                    });
+                    allIssues.push({ ...issueObj, agent_name: review.agent_name });
                 });
             });
 
@@ -2049,20 +1757,14 @@ def example_function():
                 return;
             }
 
-            // Match issues to patterns
             const matchedPatterns = {};
             allIssues.forEach(issue => {
                 const text = `${issue.description || ''} ${issue.fix || ''}`.toLowerCase();
-
                 Object.entries(QUICK_ACTION_PATTERNS).forEach(([patternId, pattern]) => {
                     const matches = pattern.keywords.some(kw => text.includes(kw.toLowerCase()));
                     if (matches) {
                         if (!matchedPatterns[patternId]) {
-                            matchedPatterns[patternId] = {
-                                ...pattern,
-                                id: patternId,
-                                issues: []
-                            };
+                            matchedPatterns[patternId] = { ...pattern, id: patternId, issues: [] };
                         }
                         matchedPatterns[patternId].issues.push(issue);
                     }
@@ -2075,81 +1777,44 @@ def example_function():
                 return;
             }
 
-            // Show panel
             panel.classList.remove('hidden');
-            countBadge.textContent = `${patternCount} pattern${patternCount !== 1 ? 's' : ''} detected`;
-
-            // Group patterns by category for display
-            container.innerHTML = Object.entries(matchedPatterns).map(([id, pattern]) =>
-                createQuickActionCard(pattern)
-            ).join('');
-        }
-
-        function getColorClasses(color) {
-            const colors = {
-                'blue': { bg: 'bg-blue-100 dark:bg-blue-900/30', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-200 dark:border-blue-800', chip: 'bg-blue-500' },
-                'red': { bg: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', border: 'border-red-200 dark:border-red-800', chip: 'bg-red-500' },
-                'orange': { bg: 'bg-orange-100 dark:bg-orange-900/30', text: 'text-orange-700 dark:text-orange-300', border: 'border-orange-200 dark:border-orange-800', chip: 'bg-orange-500' },
-                'amber': { bg: 'bg-amber-100 dark:bg-amber-900/30', text: 'text-amber-700 dark:text-amber-300', border: 'border-amber-200 dark:border-amber-800', chip: 'bg-amber-500' },
-                'yellow': { bg: 'bg-yellow-100 dark:bg-yellow-900/30', text: 'text-yellow-700 dark:text-yellow-300', border: 'border-yellow-200 dark:border-yellow-800', chip: 'bg-yellow-500' },
-                'purple': { bg: 'bg-purple-100 dark:bg-purple-900/30', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-200 dark:border-purple-800', chip: 'bg-purple-500' },
-                'indigo': { bg: 'bg-indigo-100 dark:bg-indigo-900/30', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-200 dark:border-indigo-800', chip: 'bg-indigo-500' },
-                'teal': { bg: 'bg-teal-100 dark:bg-teal-900/30', text: 'text-teal-700 dark:text-teal-300', border: 'border-teal-200 dark:border-teal-800', chip: 'bg-teal-500' },
-                'rose': { bg: 'bg-rose-100 dark:bg-rose-900/30', text: 'text-rose-700 dark:text-rose-300', border: 'border-rose-200 dark:border-rose-800', chip: 'bg-rose-500' }
-            };
-            return colors[color] || colors['blue'];
+            countBadge.textContent = `${patternCount} pattern${patternCount !== 1 ? 's' : ''}`;
+            container.innerHTML = Object.entries(matchedPatterns).map(([id, pattern]) => createQuickActionCard(pattern)).join('');
         }
 
         function createQuickActionCard(pattern) {
-            const colors = getColorClasses(pattern.color);
             const issueCount = pattern.issues.length;
-            const hasFixCode = pattern.issues.some(i => i.fix);
-
             return `
-                <div class="quick-action-card border ${colors.border} rounded-xl overflow-hidden">
-                    <!-- Header - Clickable to expand -->
-                    <div class="flex items-center justify-between p-4 ${colors.bg} cursor-pointer" onclick="toggleQuickAction('${pattern.id}')">
+                <div class="border" style="border-color: var(--term-border);">
+                    <div class="flex items-center justify-between p-3 cursor-pointer" style="background: var(--term-bg);" onclick="toggleQuickAction('${pattern.id}')">
                         <div class="flex items-center gap-3">
-                            <div class="flex items-center justify-center w-8 h-8 rounded-lg ${colors.chip} text-white">
-                                ${pattern.icon}
-                            </div>
+                            <span class="text-xs font-bold" style="color: ${pattern.color};">[!]</span>
                             <div>
-                                <h3 class="font-semibold ${colors.text}">${pattern.name}</h3>
-                                <p class="text-xs text-slate-500 dark:text-slate-400">${pattern.description}</p>
+                                <h3 class="text-xs font-semibold" style="color: ${pattern.color};">${pattern.name}</h3>
+                                <p class="text-xs" style="color: var(--term-text-muted);">// ${pattern.description}</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="px-2 py-0.5 rounded-full text-xs font-medium ${colors.bg} ${colors.text}">
-                                ${issueCount} issue${issueCount !== 1 ? 's' : ''}
-                            </span>
-                            <svg id="chevron-${pattern.id}" class="w-5 h-5 text-slate-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <span class="px-2 py-0.5 text-xs" style="background: ${pattern.color}1a; color: ${pattern.color};">${issueCount}</span>
+                            <svg id="chevron-${pattern.id}" class="w-4 h-4 transition-transform" style="color: var(--term-text-muted);" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
                             </svg>
                         </div>
                     </div>
-
-                    <!-- Expandable Content -->
-                    <div id="quick-action-content-${pattern.id}" class="hidden border-t ${colors.border}">
-                        <!-- Documentation Links -->
-                        <div class="p-4 bg-slate-50 dark:bg-slate-900/50 border-b ${colors.border}">
-                            <h4 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">Documentation</h4>
+                    <div id="quick-action-content-${pattern.id}" class="hidden border-t" style="border-color: var(--term-border);">
+                        <div class="p-3 border-b" style="background: var(--term-bg-panel); border-color: var(--term-border);">
+                            <h4 class="text-xs font-semibold mb-2" style="color: var(--term-text-muted);">// DOCS</h4>
                             <div class="flex flex-wrap gap-2">
                                 ${pattern.docs.map(doc => `
-                                    <a href="${doc.url}" target="_blank" rel="noopener noreferrer"
-                                       class="inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-indigo-300 dark:hover:border-indigo-600 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
-                                        <svg class="w-3 h-3 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path>
-                                        </svg>
+                                    <a href="${doc.url}" target="_blank" rel="noopener noreferrer" class="text-xs px-2 py-1 border transition-colors hover:border-opacity-100" style="border-color: var(--term-border); color: var(--term-cyan);">
                                         ${doc.title}
                                     </a>
                                 `).join('')}
                             </div>
                         </div>
-
-                        <!-- Related Issues and Fixes -->
-                        <div class="p-4">
-                            <h4 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">Related Issues & Fixes</h4>
-                            <div class="space-y-3">
+                        <div class="p-3">
+                            <h4 class="text-xs font-semibold mb-2" style="color: var(--term-text-muted);">// RELATED_ISSUES</h4>
+                            <div class="space-y-2">
                                 ${pattern.issues.map((issue, idx) => createQuickActionIssue(issue, pattern.id, idx)).join('')}
                             </div>
                         </div>
@@ -2160,34 +1825,24 @@ def example_function():
 
         function createQuickActionIssue(issue, patternId, idx) {
             const hasFix = issue.fix;
-            const agentBadge = issue.agent_name ?
-                `<span class="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400">${formatAgentName(issue.agent_name)}</span>` : '';
+            const agentBadge = issue.agent_name ? `<span class="text-xs" style="color: var(--term-text-muted);">[${agentConfig[issue.agent_name]?.prefix || 'AGT'}]</span>` : '';
 
             return `
-                <div class="bg-slate-50 dark:bg-slate-900 rounded-lg p-3 border border-slate-200 dark:border-slate-700">
-                    <div class="flex items-start justify-between gap-2 mb-2">
-                        <p class="text-sm text-slate-700 dark:text-slate-300">${escapeHtml(issue.description)}</p>
+                <div class="p-2 border" style="background: var(--term-bg); border-color: var(--term-border);">
+                    <div class="flex items-start justify-between gap-2 mb-1">
+                        <p class="text-xs" style="color: var(--term-text-dim);">${escapeHtml(issue.description)}</p>
                         ${agentBadge}
                     </div>
                     ${hasFix ? `
                         <div class="mt-2">
-                            <button onclick="toggleQuickActionFix('${patternId}-${idx}')"
-                                    class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center">
+                            <button onclick="toggleQuickActionFix('${patternId}-${idx}')" class="text-xs font-medium flex items-center" style="color: var(--term-green);">
                                 <svg id="fix-chevron-${patternId}-${idx}" class="w-3 h-3 mr-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
                                 </svg>
-                                View Fix Implementation
+                                view_fix()
                             </button>
                             <div id="quick-action-fix-${patternId}-${idx}" class="hidden mt-2">
-                                <div class="relative">
-                                    <pre class="!mt-0 rounded-lg overflow-hidden text-xs"><code class="language-python">${escapeHtml(issue.fix)}</code></pre>
-                                    <button onclick="copyQuickActionFix('${patternId}-${idx}')"
-                                            class="absolute top-2 right-2 p-1.5 rounded-md bg-slate-700/80 text-slate-300 hover:bg-slate-600 transition-colors">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-                                        </svg>
-                                    </button>
-                                </div>
+                                <pre class="!mt-0 overflow-hidden text-xs border" style="border-color: var(--term-border);"><code class="language-python">${escapeHtml(issue.fix)}</code></pre>
                             </div>
                         </div>
                     ` : ''}
@@ -2202,7 +1857,6 @@ def example_function():
             if (content.classList.contains('hidden')) {
                 content.classList.remove('hidden');
                 chevron.style.transform = 'rotate(180deg)';
-                // Highlight code if visible
                 Prism.highlightAllUnder(content);
             } else {
                 content.classList.add('hidden');
@@ -2224,17 +1878,6 @@ def example_function():
             }
         }
 
-        function copyQuickActionFix(fixId) {
-            const codeEl = document.querySelector(`#quick-action-fix-${fixId} code`);
-            if (!codeEl) return;
-
-            navigator.clipboard.writeText(codeEl.textContent).then(() => {
-                showToast('Fix copied to clipboard', 'success');
-            }).catch(() => {
-                showToast('Failed to copy', 'error');
-            });
-        }
-
         // ===================
         // Utility Functions
         // ===================
@@ -2252,10 +1895,7 @@ def example_function():
         function formatDate(dateStr) {
             try {
                 return new Date(dateStr).toLocaleDateString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
                 });
             } catch {
                 return dateStr;
@@ -2264,26 +1904,27 @@ def example_function():
 
         function getDecisionClasses(decision) {
             switch (decision) {
-                case 'APPROVE': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
-                case 'REJECT': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
-                default: return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+                case 'APPROVE': return 'background: var(--term-green); color: var(--term-bg);';
+                case 'REJECT': return 'background: var(--term-red); color: var(--term-bg);';
+                default: return 'background: var(--term-amber); color: var(--term-bg);';
             }
         }
 
         function getBorderColorForSeverity(severity) {
             switch ((severity || '').toLowerCase()) {
-                case 'critical': return 'border-red-500';
-                case 'high': return 'border-orange-500';
-                case 'medium': return 'border-amber-500';
-                default: return 'border-green-500';
+                case 'critical': return 'var(--term-red)';
+                case 'high': return '#ff7744';
+                case 'medium': return 'var(--term-amber)';
+                default: return 'var(--term-green)';
             }
         }
 
         function showToast(message, type = 'info') {
-            // Simple toast notification
             const toast = document.createElement('div');
-            const bgColor = type === 'error' ? 'bg-red-500' : type === 'success' ? 'bg-green-500' : 'bg-indigo-500';
-            toast.className = `fixed bottom-4 right-4 ${bgColor} text-white px-6 py-3 rounded-xl shadow-lg z-50 fade-in`;
+            const bgColor = type === 'error' ? 'var(--term-red)' : type === 'success' ? 'var(--term-green)' : 'var(--term-cyan)';
+            toast.className = 'toast fixed bottom-4 right-4 px-4 py-2 text-xs font-medium z-50 fade-in';
+            toast.style.background = bgColor;
+            toast.style.color = 'var(--term-bg)';
             toast.textContent = message;
             document.body.appendChild(toast);
             setTimeout(() => toast.remove(), 3000);
@@ -2292,46 +1933,39 @@ def example_function():
         // ===================
         // Export Functions
         // ===================
-
         function exportAsMarkdown() {
             if (!currentResultsData) {
-                showToast('No review data to export', 'error');
+                showToast('ERROR: no data', 'error');
                 return;
             }
 
             const data = currentResultsData;
             const timestamp = new Date().toLocaleString();
-            let md = `# Consensys Code Review Report\n\n`;
+            let md = `# CONSENSYS CODE REVIEW REPORT\n\n`;
             md += `**Generated:** ${timestamp}\n\n`;
 
-            // Consensus/Verdict
             if (data.consensus) {
-                md += `## Final Verdict: ${data.consensus.decision || 'PENDING'}\n\n`;
+                md += `## VERDICT: ${data.consensus.decision || 'PENDING'}\n\n`;
                 md += `| Vote | Count |\n|------|-------|\n`;
-                md += `| Approve | ${data.consensus.vote_counts?.APPROVE || 0} |\n`;
-                md += `| Reject | ${data.consensus.vote_counts?.REJECT || 0} |\n`;
-                md += `| Abstain | ${data.consensus.vote_counts?.ABSTAIN || 0} |\n\n`;
+                md += `| APPROVE | ${data.consensus.vote_counts?.APPROVE || 0} |\n`;
+                md += `| REJECT | ${data.consensus.vote_counts?.REJECT || 0} |\n`;
+                md += `| ABSTAIN | ${data.consensus.vote_counts?.ABSTAIN || 0} |\n\n`;
 
                 if (data.consensus.key_issues?.length) {
-                    md += `### Key Issues\n`;
-                    data.consensus.key_issues.forEach(issue => {
-                        md += `- ${issue}\n`;
-                    });
+                    md += `### KEY ISSUES\n`;
+                    data.consensus.key_issues.forEach(issue => md += `- ${issue}\n`);
                     md += '\n';
                 }
 
                 if (data.consensus.accepted_suggestions?.length) {
-                    md += `### Accepted Suggestions\n`;
-                    data.consensus.accepted_suggestions.forEach(s => {
-                        md += `- ${s}\n`;
-                    });
+                    md += `### ACCEPTED SUGGESTIONS\n`;
+                    data.consensus.accepted_suggestions.forEach(s => md += `- ${s}\n`);
                     md += '\n';
                 }
             }
 
-            // Agent Reviews
             if (data.reviews?.length) {
-                md += `## Agent Reviews\n\n`;
+                md += `## AGENT REVIEWS\n\n`;
                 data.reviews.forEach(review => {
                     md += `### ${formatAgentName(review.agent_name)}\n\n`;
                     md += `**Severity:** ${review.severity || 'LOW'} | **Confidence:** ${Math.round((review.confidence || 0) * 100)}%\n\n`;
@@ -2340,10 +1974,9 @@ def example_function():
                         md += `**Issues:**\n`;
                         review.issues.forEach(issue => {
                             const issueObj = typeof issue === 'string' ? { description: issue } : issue;
-                            const lineInfo = issueObj.line ? ` (Line ${issueObj.line})` : '';
+                            const lineInfo = issueObj.line ? ` (L${issueObj.line})` : '';
                             const severity = issueObj.severity ? `[${issueObj.severity}] ` : '';
                             md += `- ${severity}${issueObj.description}${lineInfo}\n`;
-
                             if (issueObj.fix) {
                                 md += `  - **Fix:**\n\`\`\`${data.language || 'text'}\n${issueObj.fix}\n\`\`\`\n`;
                             }
@@ -2357,42 +1990,25 @@ def example_function():
                         md += '\n';
                     }
 
-                    if (review.summary) {
-                        md += `**Summary:** ${review.summary}\n\n`;
-                    }
-
+                    if (review.summary) md += `**Summary:** ${review.summary}\n\n`;
                     md += '---\n\n';
                 });
             }
 
-            // Votes
-            if (data.votes?.length) {
-                md += `## Agent Votes\n\n`;
-                md += `| Agent | Vote | Reasoning |\n|-------|------|----------|\n`;
-                data.votes.forEach(vote => {
-                    const reasoning = vote.reasoning ? vote.reasoning.slice(0, 100) + (vote.reasoning.length > 100 ? '...' : '') : '-';
-                    md += `| ${formatAgentName(vote.agent_name)} | ${vote.decision} | ${reasoning} |\n`;
-                });
-                md += '\n';
-            }
-
-            // Code snippet
             if (data.code) {
-                md += `## Reviewed Code\n\n`;
-                md += `\`\`\`${data.language || 'text'}\n${data.code}\n\`\`\`\n`;
+                md += `## REVIEWED CODE\n\n\`\`\`${data.language || 'text'}\n${data.code}\n\`\`\`\n`;
             }
 
             downloadFile(md, 'consensys-review.md', 'text/markdown');
-            showToast('Exported as Markdown', 'success');
+            showToast('[OK] exported markdown', 'success');
         }
 
         function exportAsJSON() {
             if (!currentResultsData) {
-                showToast('No review data to export', 'error');
+                showToast('ERROR: no data', 'error');
                 return;
             }
 
-            // Create CI/CD-friendly JSON structure
             const exportData = {
                 version: '1.0',
                 timestamp: new Date().toISOString(),
@@ -2403,12 +2019,7 @@ def example_function():
                     is_rejected: currentResultsData.consensus?.decision === 'REJECT'
                 },
                 summary: {
-                    total_issues: 0,
-                    critical_count: 0,
-                    high_count: 0,
-                    medium_count: 0,
-                    low_count: 0,
-                    total_fixes: 0
+                    total_issues: 0, critical_count: 0, high_count: 0, medium_count: 0, low_count: 0, total_fixes: 0
                 },
                 issues: [],
                 fixes: [],
@@ -2420,7 +2031,6 @@ def example_function():
                 session_id: currentResultsData.session_id || null
             };
 
-            // Aggregate issues and fixes from reviews
             (currentResultsData.reviews || []).forEach(review => {
                 if (!review.issues) return;
                 review.issues.forEach(issue => {
@@ -2455,33 +2065,29 @@ def example_function():
                 });
             });
 
-            const json = JSON.stringify(exportData, null, 2);
-            downloadFile(json, 'consensys-review.json', 'application/json');
-            showToast('Exported as JSON', 'success');
+            downloadFile(JSON.stringify(exportData, null, 2), 'consensys-review.json', 'application/json');
+            showToast('[OK] exported json', 'success');
         }
 
         function exportAsGitHubIssue() {
             if (!currentResultsData) {
-                showToast('No review data to export', 'error');
+                showToast('ERROR: no data', 'error');
                 return;
             }
 
             const data = currentResultsData;
             const decision = data.consensus?.decision || 'PENDING';
-            const decisionEmoji = decision === 'APPROVE' ? '✅' : decision === 'REJECT' ? '❌' : '⚠️';
 
-            let body = `## ${decisionEmoji} Code Review: ${decision}\n\n`;
-            body += `> Automated review generated by Consensys multi-agent AI code review\n\n`;
+            let body = `## Code Review: ${decision}\n\n`;
+            body += `> Automated review by Consensys multi-agent AI\n\n`;
 
-            // Vote summary
             if (data.consensus) {
                 body += `### Vote Summary\n`;
-                body += `- ✅ Approve: **${data.consensus.vote_counts?.APPROVE || 0}**\n`;
-                body += `- ❌ Reject: **${data.consensus.vote_counts?.REJECT || 0}**\n`;
-                body += `- ⚪ Abstain: **${data.consensus.vote_counts?.ABSTAIN || 0}**\n\n`;
+                body += `- APPROVE: **${data.consensus.vote_counts?.APPROVE || 0}**\n`;
+                body += `- REJECT: **${data.consensus.vote_counts?.REJECT || 0}**\n`;
+                body += `- ABSTAIN: **${data.consensus.vote_counts?.ABSTAIN || 0}**\n\n`;
             }
 
-            // Collect issues by severity
             const issuesBySeverity = { CRITICAL: [], HIGH: [], MEDIUM: [], LOW: [] };
             (data.reviews || []).forEach(review => {
                 if (!review.issues) return;
@@ -2489,66 +2095,41 @@ def example_function():
                     const issueObj = typeof issue === 'string' ? { description: issue, severity: 'LOW' } : issue;
                     const severity = (issueObj.severity || 'LOW').toUpperCase();
                     if (issuesBySeverity[severity]) {
-                        issuesBySeverity[severity].push({
-                            ...issueObj,
-                            agent: review.agent_name
-                        });
+                        issuesBySeverity[severity].push({ ...issueObj, agent: review.agent_name });
                     }
                 });
             });
-
-            // Add issues section
-            const severityLabels = {
-                CRITICAL: '🔴 Critical',
-                HIGH: '🟠 High',
-                MEDIUM: '🟡 Medium',
-                LOW: '🟢 Low'
-            };
 
             let hasIssues = false;
             Object.entries(issuesBySeverity).forEach(([severity, issues]) => {
                 if (issues.length === 0) return;
                 hasIssues = true;
 
-                body += `### ${severityLabels[severity]} Issues (${issues.length})\n\n`;
+                body += `### ${severity} Issues (${issues.length})\n\n`;
                 issues.forEach((issue, idx) => {
-                    const lineInfo = issue.line ? ` (Line ${issue.line})` : '';
+                    const lineInfo = issue.line ? ` (L${issue.line})` : '';
                     body += `**${idx + 1}.** ${issue.description}${lineInfo}\n`;
-                    body += `   - *Reported by: ${formatAgentName(issue.agent)}*\n`;
-
+                    body += `   - *Agent: ${formatAgentName(issue.agent)}*\n`;
                     if (issue.fix) {
-                        body += `   - **Suggested Fix:**\n`;
-                        body += `   \`\`\`${data.language || ''}\n   ${issue.fix.split('\n').join('\n   ')}\n   \`\`\`\n`;
+                        body += `   - **Fix:**\n\`\`\`${data.language || ''}\n${issue.fix}\n\`\`\`\n`;
                     }
                     body += '\n';
                 });
             });
 
-            if (!hasIssues) {
-                body += `### ✨ No Issues Found\n\nAll agents found the code to be acceptable.\n\n`;
-            }
+            if (!hasIssues) body += `### No Issues Found\n\n`;
 
-            // Key suggestions
             if (data.consensus?.accepted_suggestions?.length) {
-                body += `### 💡 Accepted Suggestions\n\n`;
-                data.consensus.accepted_suggestions.forEach(s => {
-                    body += `- [ ] ${s}\n`;
-                });
+                body += `### Accepted Suggestions\n\n`;
+                data.consensus.accepted_suggestions.forEach(s => body += `- [ ] ${s}\n`);
                 body += '\n';
             }
 
-            // Labels suggestion
-            body += `---\n\n`;
-            body += `**Suggested Labels:** `;
-            const labels = ['code-review', 'ai-generated'];
-            if (decision === 'REJECT') labels.push('needs-work');
-            if (issuesBySeverity.CRITICAL.length > 0) labels.push('critical');
-            if (issuesBySeverity.HIGH.length > 0) labels.push('high-priority');
-            body += labels.map(l => `\`${l}\``).join(', ');
-            body += '\n';
+            body += `---\n**Labels:** \`code-review\`, \`ai-generated\``;
+            if (decision === 'REJECT') body += `, \`needs-work\``;
 
             downloadFile(body, 'github-issue.md', 'text/markdown');
-            showToast('Exported as GitHub Issue', 'success');
+            showToast('[OK] exported github issue', 'success');
         }
 
         function downloadFile(content, filename, mimeType) {
@@ -2566,12 +2147,17 @@ def example_function():
         // ===================
         // Initialize
         // ===================
-        // Check for system dark mode preference
         if (window.matchMedia) {
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
                 if (!localStorage.getItem('theme')) {
                     isDark = e.matches;
-                    document.documentElement.classList.toggle('dark', isDark);
+                    if (isDark) {
+                        document.documentElement.classList.add('dark');
+                        document.documentElement.classList.remove('light');
+                    } else {
+                        document.documentElement.classList.remove('dark');
+                        document.documentElement.classList.add('light');
+                    }
                 }
             });
         }
